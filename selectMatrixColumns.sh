@@ -40,7 +40,7 @@ NR == 1 {
 	} 
 	NF=length(sel)+offset
 }
-
+1
 ' "$m"
 
 
