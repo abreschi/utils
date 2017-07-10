@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse, sys
+from collections import OrderedDict
 
 decor_dict = {
 	"keep" : ">>>>>",
@@ -50,11 +51,14 @@ def read_bed12(bed12):
 def decorate_seq(seqs, ref, decor_dict):
 	# Initialize dictionaries with indeces
 	s_indeces = dict.fromkeys(seqs.keys(), 0)
-	new_seqs = dict.fromkeys(seqs.keys(), "")
+	new_seqs = OrderedDict.fromkeys(seqs.keys(), "")
 	exon_indeces = dict.fromkeys(seqs.keys(), 0)
 	tx_lens = {}
 	for id in seqs:
+		strand = ref[id][0][2]
 		exons = sorted(ref[id])
+		if strand == "-":
+			exons.reverse()
 		ref[id] = exons
 		exon_i = exon_indeces[id]
 		tx_lens[id] = exons[exon_i][1] - exons[exon_i][0]
@@ -101,7 +105,7 @@ def decorate_seq(seqs, ref, decor_dict):
 
 def read_fa(f, ref):
 	openf = sys.stdin if f == "stdin" else open(f)
-	seqs = dict()
+	seqs = OrderedDict()
 	for line in openf:
 		if line.startswith(">"):
 			id = line.lstrip(">").split()[0].strip()
