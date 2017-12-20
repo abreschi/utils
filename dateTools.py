@@ -114,7 +114,11 @@ def dates_overlap(dates1, dates2):
 	return dates1_start <= dates2_end and dates1_end >= dates2_start
 
 
-def closest_dates_by_group(df_a, df_b, group_ix=3, max_dist=2.5*3600):
+def format_row(df_row):
+	return "\t".join(map(str, df_row.values.tolist()[0]))
+
+
+def closest_dates_by_group(df_a, df_b, direction, group_ix=3, max_dist=2.5*3600):
 	''' For each date in A find the closest 
 	date in B by the column specified in group '''
 	# Sort dataframes
@@ -163,8 +167,7 @@ def closest_dates_by_group(df_a, df_b, group_ix=3, max_dist=2.5*3600):
 					# Exit the while loop
 					same_group = False
 					# Return both A and B rows
-					yield a_row.to_string(index=False, header=False) + "\t" +\
-						min_b_row.to_string(index=False, header=False) + "\n"
+					yield format_row(a_row) + "\t" + format_row(b_row) + "\n"
 				continue
 
 
@@ -188,7 +191,7 @@ def intersect_dates_by_group(df_a, df_b, group_ix=3):
 				j += 1
 				a_row = df_a.iloc[[j]]
 			if dates_overlap(list(b_row.iloc[0][[0,1]]), list(a_row.iloc[0][[0,1]])):
-				yield b_row.to_string(header=False, index=False) + "\n"
+				yield format_row(b_row) + "\n"
 
 
 def intersect(args):
