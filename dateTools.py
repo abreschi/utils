@@ -3,6 +3,7 @@
 import argparse, ast
 import datetime as dt
 import pandas
+import numpy as np
 from dateutil.parser import *
 
 
@@ -12,9 +13,9 @@ def arguments():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-a', dest='dates_a', 
 		type=argparse.FileType('r'), 
-		help='File in dates format (interval)')
+		help='File in dates format (columns are <dateStart> <dateEnd> <value> <...>)')
 	parser.add_argument('-o', dest='output', 
-		type=argparse.FileType('w'), 
+		type=argparse.FileType('w'), default="-", 
 		help='Output file name')
 	parser.add_argument('-F','--floor', type=str, default="5 minutes", 
 		help='''Rounding interval. Accepted units: years, months, days, 
@@ -32,6 +33,19 @@ def arguments():
 		type=argparse.FileType('r'), 
 		help='File in dates format (interval)')
 	parser_intersect.set_defaults(func=intersect)
+	
+	# create the parser for the 'closest' command
+	parser_closest = subparsers.add_parser('closest', 
+		help='Find closest interval')
+	parser_closest.add_argument('-b', dest='dates_b',
+		type=argparse.FileType('r'), 
+		help='File in dates format (interval)')
+	parser_closest.add_argument('-d', dest='direction',
+		choices=['d','u','b'], default='d', 
+		help='''For each date in A find closest date in B. 
+		Restrict to downstream dates only (d), upstream (u)
+		or both (b)	[default=%(default)s]''')
+	parser_closest.set_defaults(func=closest)
 	
 	# create the parser for the 'format' command
 	parser_format = subparsers.add_parser('format', 
@@ -61,34 +75,6 @@ def floor_date(date, interval):
 	return date
 	
 
-def read_dates(f, interval):
-	dateparse = lambda x: floor_date(parse(x), interval)
-	df = pandas.read_csv(f, sep='\t', header=None, parse_dates=[0,1], date_parser=dateparse)
-	return df
-
-
-def read_dates_a(args):
-	# Read data with date intervals
-	df_a = read_dates(args.dates_a, args.floor)
-	if args.before or args.after:
-		df_a = extend_dates(df_a, args.before, args.after)
-	return df_a
-
-
-def intersect(args):
-	# Read data with date intervals
-	df_a = read_dates_a(args.dates_a, args.floor)
-	df_b = read_dates(args.dates_b, args.floor)
-	if args.before or args.after:
-		df_a = extend_dates(df_a, args.before, args.after)
-	return
-
-
-def format(args):
-	df_a = read_dates_a(args)
-	df_a.to_csv(args.output, sep='\t', header=False, index=False)
-	return
-
 def extend(date, before=None, after=None):
 	if before:
 		before = before.strip().split()[1] + "=" + before.strip().split()[0]
@@ -107,10 +93,135 @@ def extend_dates(df, before, after):
 	return df
 
 
+def read_dates(f, interval):
+	dateparse = lambda x: floor_date(parse(x), interval)
+	df = pandas.read_csv(f, sep='\t', header=None, parse_dates=[0,1], date_parser=dateparse)
+#	df = np.genfromtxt(f, delimiter='\t', dtype=None, missing_values="NA")
+	return df
+
+
+def read_dates_a(args):
+	# Read data with date intervals
+	df_a = read_dates(args.dates_a, args.floor)
+	if args.before or args.after:
+		df_a = extend_dates(df_a, args.before, args.after)
+	return df_a
+
+
+def dates_overlap(dates1, dates2):
+	dates1_start, dates1_end = dates1
+	dates2_start, dates2_end = dates2
+	return dates1_start <= dates2_end and dates1_end >= dates2_start
+
+
+def closest_dates_by_group(df_a, df_b, group_ix=3, max_dist=2.5*3600):
+	''' For each date in A find the closest 
+	date in B by the column specified in group '''
+	# Sort dataframes
+	df_a.sort_values([group_ix,0], 0, inplace=True)
+	df_b.sort_values([group_ix,0], 0, inplace=True)
+	# Initialize counter for rows in B
+	j = 0
+	df_a_nrows = df_a.count()[0]
+	df_b_nrows = df_b.count()[0]
+	# Traverse rows in A
+	for i in range(df_a_nrows):
+		b_row = df_b.iloc[[j]]
+		a_row = df_a.iloc[[i]]
+		b_group = b_row.iloc[0][group_ix]
+		a_group = a_row.iloc[0][group_ix]
+		# Check for group matching
+		while b_group < a_group and j < df_b_nrows - 1:
+			j += 1
+			b_row = df_b.iloc[[j]]
+			b_group = b_row.iloc[0][group_ix]
+		if b_group > a_group:
+			continue
+		# Initialize variables for minimum
+		min_diff = 1e+10
+		min_b_row = None
+		same_group = (a_group == b_group)
+		while same_group:
+			a_start = a_row.iloc[0][0]
+			b_start = b_row.iloc[0][0]
+			# Difference between date starts (consider other borders?)
+			diff = abs((b_start - a_start).total_seconds())
+			# Keep scanning B
+			while a_start > b_start and j < df_b_nrows -1:
+				if diff < min_diff and direction != "d":
+					min_diff = diff
+					min_b_row = b_row
+				j += 1
+				b_row = df_b.iloc[[j]]
+				b_start = b_row.iloc[0][0]
+			# Stop and print
+			if a_start <= b_start:
+				if diff < min_diff and direction != "u":
+					min_diff = diff
+					min_b_row = b_row
+				if min_diff <= max_dist:
+					# Exit the while loop
+					same_group = False
+					# Return both A and B rows
+					yield a_row.to_string(index=False, header=False) + "\t" +\
+						min_b_row.to_string(index=False, header=False) + "\n"
+				continue
+
+
+def intersect_dates_by_group(df_a, df_b, group_ix=3):
+	''' Intersect dates when a group is specified '''
+	df_a.sort_values([group_ix,0], 0, inplace=True)
+	df_b.sort_values([group_ix,0], 0, inplace=True)
+	j = 0
+	for i in range(df_b.count()[0]):
+		b_row = df_b.iloc[[i]]
+		a_row = df_a.iloc[[j]]
+		if b_row.iloc[0][group_ix] < a_row.iloc[0][group_ix]:
+			continue
+		while b_row.iloc[0][group_ix] > a_row.iloc[0][group_ix] and j < df_a.count()[0] - 1:
+			j += 1
+			a_row = df_a.iloc[[j]]
+		if b_row.iloc[0][group_ix] == a_row.iloc[0][group_ix]:
+			if b_row.iloc[0][1] < a_row.iloc[0][0]:
+				continue
+			while b_row.iloc[0][0] > a_row.iloc[0][1] and j < df_a.count()[0] - 1:
+				j += 1
+				a_row = df_a.iloc[[j]]
+			if dates_overlap(list(b_row.iloc[0][[0,1]]), list(a_row.iloc[0][[0,1]])):
+				yield b_row.to_string(header=False, index=False) + "\n"
+
+
+def intersect(args):
+	''' Intersect dates in b with dates in a '''
+	# Read data with date intervals
+	df_a = read_dates_a(args)
+	df_b = read_dates(args.dates_b, args.floor)
+	map(args.output.write, intersect_dates_by_group(df_a, df_b))
+	return
+
+
+def format(args):
+	''' Print dates file after formatting dates '''
+	df_a = read_dates_a(args)
+	df_a.to_csv(args.output, sep='\t', header=False, index=False)
+	return
+
+
+def closest(args):
+	''' For each date in A, find the closest 
+	feature in B '''
+	df_a = read_dates_a(args)
+	df_b = read_dates(args.dates_b, args.floor)
+	map(args.output.write, closest_dates_by_group(df_a, df_b, 
+		direction=args.direction))
+	return
+
+
+
 if __name__ == '__main__':
 	# Argument parsing
 	parser = arguments()
 	args = parser.parse_args()
-	print args
+	# Call function
 	args.func(args)
 	exit()
