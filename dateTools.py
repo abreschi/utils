@@ -171,27 +171,54 @@ def closest_dates_by_group(df_a, df_b, direction, group_ix=3, max_dist=2.5*3600)
 				continue
 
 
-def intersect_dates_by_group(df_a, df_b, group_ix=3):
-	''' Intersect dates when a group is specified '''
-	df_a.sort_values([group_ix,0], 0, inplace=True)
-	df_b.sort_values([group_ix,0], 0, inplace=True)
+#def intersect_dates_by_group(df_a, df_b, group_ix=3):
+#	''' Intersect dates when a group is specified '''
+#	groups = set(df_a[group_ix].values.tolist())
+#	df_a.sort_values([group_ix,0], 0, inplace=True)
+#	df_b.sort_values([group_ix,0], 0, inplace=True)
+#	return
+#	j = 0
+#	for i in range(df_b.count()[0]):
+#		b_row = df_b.iloc[[i]]
+#		a_row = df_a.iloc[[j]]
+#		if b_row.iloc[0][group_ix] < a_row.iloc[0][group_ix]:
+#			continue
+#		while b_row.iloc[0][group_ix] > a_row.iloc[0][group_ix] and j < df_a.count()[0] - 1:
+#			j += 1
+#			a_row = df_a.iloc[[j]]
+#		if b_row.iloc[0][group_ix] == a_row.iloc[0][group_ix]:
+#			if b_row.iloc[0][1] < a_row.iloc[0][0]:
+#				continue
+#			while b_row.iloc[0][0] > a_row.iloc[0][1] and j < df_a.count()[0] - 1:
+#				j += 1
+#				a_row = df_a.iloc[[j]]
+#			if dates_overlap(list(b_row.iloc[0][[0,1]]), list(a_row.iloc[0][[0,1]])):
+#				yield format_row(a_row) + format_row(b_row) + "\n"
+
+def intersect_dates(df_a, df_b):
+	''' Intersect dates without specifying group '''
+	df_a_nrows = df_a.count()[0]
+	df_b_nrows = df_b.count()[0]
 	j = 0
-	for i in range(df_b.count()[0]):
+	for i in range(df_b_nrows):
 		b_row = df_b.iloc[[i]]
 		a_row = df_a.iloc[[j]]
-		if b_row.iloc[0][group_ix] < a_row.iloc[0][group_ix]:
+		if b_row.iloc[0][1] < a_row.iloc[0][0]:
 			continue
-		while b_row.iloc[0][group_ix] > a_row.iloc[0][group_ix] and j < df_a.count()[0] - 1:
+		while b_row.iloc[0][0] > a_row.iloc[0][1] and j < df_a_nrows - 1:
 			j += 1
 			a_row = df_a.iloc[[j]]
-		if b_row.iloc[0][group_ix] == a_row.iloc[0][group_ix]:
-			if b_row.iloc[0][1] < a_row.iloc[0][0]:
-				continue
-			while b_row.iloc[0][0] > a_row.iloc[0][1] and j < df_a.count()[0] - 1:
-				j += 1
-				a_row = df_a.iloc[[j]]
-			if dates_overlap(list(b_row.iloc[0][[0,1]]), list(a_row.iloc[0][[0,1]])):
-				yield format_row(b_row) + "\n"
+		if dates_overlap(list(b_row.iloc[0][[0,1]]), list(a_row.iloc[0][[0,1]])):
+			yield format_row(a_row) + "\t" + format_row(b_row) + "\n"
+
+
+def intersect_dates_by_group(df_a, df_b, group_ix=3):
+	''' Intersect dates when a group is specified '''
+	groups = set(df_a[group_ix].values.tolist())
+	for group in sorted(groups):
+		subdf_a = df_a[df_a[group_ix] == group].sort_values([0], 0)
+		subdf_b = df_b[df_b[group_ix] == group].sort_values([0], 0)
+		return intersect_dates(subdf_a, subdf_b)
 
 
 def intersect(args):
