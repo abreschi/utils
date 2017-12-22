@@ -105,7 +105,12 @@ def extend_dates(df, before, after):
 def read_dates(f, interval):
 	dateparse = lambda x: floor_date(parse(x), interval)
 	df = pandas.read_csv(f, sep='\t', header=None, parse_dates=[0,1], date_parser=dateparse)
-#	df = np.genfromtxt(f, delimiter='\t', dtype=None, missing_values="NA")
+	return df
+
+
+def read_dates_np(f, interval):
+	dateparse = lambda x: floor_date(parse(x), interval)
+	df = np.genfromtxt(f, delimiter='\t', dtype=None, missing_values="NA")
 	return df
 
 
@@ -183,6 +188,9 @@ def closest_dates_by_group(df_a, df_b, direction, group_ix=3, max_dist=2.5*3600)
 				continue
 
 
+def format_row_np(row):
+	return "\t".join(map(str, row.tolist()))
+
 def merge_dates(df_a, touching=True, group_ix=None):
 	''' Merge date intervals '''
 	if group_ix:
@@ -190,20 +198,20 @@ def merge_dates(df_a, touching=True, group_ix=None):
 	else:
 		df_a.sort_values([0,1], 0, inplace=True)
 	df_a_nrows = df_a.count()[0]
-	a_row = df_a.iloc[[0]]
+	a_row = df_a.iloc[[0]].values[0]
 	for i in xrange(df_a_nrows):
-		curr_row = df_a.iloc[[i]]
-		if group_ix and a_row.iloc[0][group_ix] != curr_row.iloc[0][group_ix]:
-			yield_row = format_row(a_row) + "\n"
+		curr_row = df_a.iloc[[i]].values[0]
+		if group_ix and a_row[group_ix] != curr_row[group_ix]:
+			yield_row = format_row_np(a_row) + "\n"
 			a_row = curr_row
 			yield yield_row
-		if dates_overlap(list(a_row.iloc[0][[0,1]]), list(curr_row.iloc[0][[0,1]])):
-			a_row.iloc[0][1] = curr_row.iloc[0][1]
+		if dates_overlap(a_row[:2], curr_row[:2]):
+			a_row[1] = curr_row[1]
 			continue
-		yield_row = format_row(a_row) + "\n"
+		yield_row = format_row_np(a_row) + "\n"
 		a_row = curr_row
 		yield yield_row
-	yield format_row(a_row) + "\n"
+	yield format_row_np(a_row) + "\n"
 		
 
 #def intersect_dates_by_group(df_a, df_b, group_ix=3):
