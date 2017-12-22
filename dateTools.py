@@ -47,6 +47,15 @@ def arguments():
 		or both (b)	[default=%(default)s]''')
 	parser_closest.set_defaults(func=closest)
 	
+	# create the parser for the 'merge' command
+	parser_merge = subparsers.add_parser('merge',
+		help='Merge date intervals')
+	parser_merge.add_argument('-T', dest='no_touching',
+		default=False, action="store_true",
+		help='''Do not merge if dates are touching 
+			but not overlapping [default=Merge touching dates]''')
+	parser_merge.set_defaults(func=merge)
+	
 	# create the parser for the 'format' command
 	parser_format = subparsers.add_parser('format', 
 		help='Format date intervals')
@@ -108,10 +117,13 @@ def read_dates_a(args):
 	return df_a
 
 
-def dates_overlap(dates1, dates2):
+def dates_overlap(dates1, dates2, touching=True):
 	dates1_start, dates1_end = dates1
 	dates2_start, dates2_end = dates2
-	return dates1_start <= dates2_end and dates1_end >= dates2_start
+	if touching:
+		return dates1_start <= dates2_end and dates1_end >= dates2_start
+	else:
+		return dates1_start < dates2_end and dates1_end > dates2_start
 
 
 def format_row(df_row):
@@ -129,7 +141,7 @@ def closest_dates_by_group(df_a, df_b, direction, group_ix=3, max_dist=2.5*3600)
 	df_a_nrows = df_a.count()[0]
 	df_b_nrows = df_b.count()[0]
 	# Traverse rows in A
-	for i in range(df_a_nrows):
+	for i in xrange(df_a_nrows):
 		b_row = df_b.iloc[[j]]
 		a_row = df_a.iloc[[i]]
 		b_group = b_row.iloc[0][group_ix]
@@ -171,6 +183,29 @@ def closest_dates_by_group(df_a, df_b, direction, group_ix=3, max_dist=2.5*3600)
 				continue
 
 
+def merge_dates(df_a, touching=True, group_ix=None):
+	''' Merge date intervals '''
+	if group_ix:
+		df_a.sort_values([group_ix,0,1], 0, inplace=True)
+	else:
+		df_a.sort_values([0,1], 0, inplace=True)
+	df_a_nrows = df_a.count()[0]
+	a_row = df_a.iloc[[0]]
+	for i in xrange(df_a_nrows):
+		curr_row = df_a.iloc[[i]]
+		if group_ix and a_row.iloc[0][group_ix] != curr_row.iloc[0][group_ix]:
+			yield_row = format_row(a_row) + "\n"
+			a_row = curr_row
+			yield yield_row
+		if dates_overlap(list(a_row.iloc[0][[0,1]]), list(curr_row.iloc[0][[0,1]])):
+			a_row.iloc[0][1] = curr_row.iloc[0][1]
+			continue
+		yield_row = format_row(a_row) + "\n"
+		a_row = curr_row
+		yield yield_row
+	yield format_row(a_row) + "\n"
+		
+
 #def intersect_dates_by_group(df_a, df_b, group_ix=3):
 #	''' Intersect dates when a group is specified '''
 #	groups = set(df_a[group_ix].values.tolist())
@@ -200,7 +235,7 @@ def intersect_dates(df_a, df_b):
 	df_a_nrows = df_a.count()[0]
 	df_b_nrows = df_b.count()[0]
 	j = 0
-	for i in range(df_b_nrows):
+	for i in xrange(df_b_nrows):
 		b_row = df_b.iloc[[i]]
 		a_row = df_a.iloc[[j]]
 		if b_row.iloc[0][1] < a_row.iloc[0][0]:
@@ -234,6 +269,13 @@ def format(args):
 	''' Print dates file after formatting dates '''
 	df_a = read_dates_a(args)
 	df_a.to_csv(args.output, sep='\t', header=False, index=False)
+	return
+
+
+def merge(args):
+	''' Merged overlapping dates '''
+	df_a = read_dates_a(args)
+	map(args.output.write, merge_dates(df_a, not args.no_touching, group_ix=3))
 	return
 
 
