@@ -17,7 +17,7 @@ def arguments():
 	parser.add_argument('-o', dest='output', 
 		type=argparse.FileType('w'), default="-", 
 		help='Output file name')
-	parser.add_argument('-F','--floor', type=str, default="5 minutes", 
+	parser.add_argument('-F','--floor', type=str, default=None, 
 		help='''Rounding interval. Accepted units: years, months, days, 
 		hours, minutes, seconds [default: %(default)s]''')
 	parser.add_argument('--before', 
@@ -102,14 +102,20 @@ def extend_dates(df, before, after):
 	return df
 
 
-def read_dates(f, interval):
-	dateparse = lambda x: floor_date(parse(x), interval)
-	df = pandas.read_csv(f, sep='\t', header=None, parse_dates=[0,1], date_parser=dateparse)
+def read_dates(f, interval=None):
+	#if interval:
+	#	dateparse = lambda x: floor_date(parse(x), interval)
+	#else:
+	#	dateparse = lambda x: parse(x)	
+	#df = pandas.read_csv(f, sep='\t', header=None, parse_dates=[0,1], date_parser=dateparse)
+	df = pandas.read_csv(f, sep='\t', header=None, parse_dates=[0,1])
+	if interval:
+		df[0] = map(lambda x: floor_date(x, interval), df[0])
+		df[1] = map(lambda x: floor_date(x, interval), df[1])
 	return df
 
 
 def read_dates_np(f, interval):
-	dateparse = lambda x: floor_date(parse(x), interval)
 	df = np.genfromtxt(f, delimiter='\t', dtype=None, missing_values="NA")
 	return df
 
@@ -259,9 +265,11 @@ def intersect_dates_by_group(df_a, df_b, group_ix=3):
 	''' Intersect dates when a group is specified '''
 	groups = set(df_a[group_ix].values.tolist())
 	for group in sorted(groups):
+		print group
 		subdf_a = df_a[df_a[group_ix] == group].sort_values([0], 0)
 		subdf_b = df_b[df_b[group_ix] == group].sort_values([0], 0)
-		return intersect_dates(subdf_a, subdf_b)
+		for date in intersect_dates(subdf_a, subdf_b):
+			yield date
 
 
 def intersect(args):
