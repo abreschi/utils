@@ -250,15 +250,15 @@ def intersect_dates(df_a, df_b):
 	df_b_nrows = df_b.count()[0]
 	j = 0
 	for i in xrange(df_b_nrows):
-		b_row = df_b.iloc[[i]]
-		a_row = df_a.iloc[[j]]
-		if b_row.iloc[0][1] < a_row.iloc[0][0]:
+		b_row = df_b.iloc[[i]].values[0]
+		a_row = df_a.iloc[[j]].values[0]
+		if b_row[1] < a_row[0]:
 			continue
-		while b_row.iloc[0][0] > a_row.iloc[0][1] and j < df_a_nrows - 1:
+		while b_row[0] > a_row[1] and j < df_a_nrows - 1:
 			j += 1
-			a_row = df_a.iloc[[j]]
-		if dates_overlap(list(b_row.iloc[0][[0,1]]), list(a_row.iloc[0][[0,1]])):
-			yield format_row(a_row) + "\t" + format_row(b_row) + "\n"
+			a_row = df_a.iloc[[j]].values[0]
+		if dates_overlap(b_row[:2], a_row[:2]):
+			yield format_row_np(a_row) + "\t" + format_row_np(b_row) + "\n"
 
 
 def intersect_dates_by_group(df_a, df_b, group_ix=3):
