@@ -245,7 +245,8 @@ def closest_dates(df_b, df_a, direction, tol):
 	return out
 
 
-def closest_dates_by_group(df_a, df_b, direction, group_ix, max_dist=0):
+def closest_dates_by_group(df_a, df_b, direction, 
+		group_ix, max_dist=float('inf')):
 	''' For each date in A find the closest 
 	date in B by the column specified in group '''
 	try:
@@ -383,7 +384,7 @@ def closest(args):
 	feature in B '''
 	df_a = read_dates_a(args)
 	df_b = read_dates(args.dates_b, args.floor)
-	max_dist = 0
+	max_dist = float('inf')
 	if args.max_dist:
 		max_dist = parse_time_interval(args.max_dist) # seconds
 	if args.group_by:
