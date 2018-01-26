@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
-import argparse, ast
+import argparse, ast, re
 import datetime as dt
 import pandas
 import numpy as np
 from dateutil.parser import *
-
 
 def arguments():
 
@@ -17,6 +16,9 @@ def arguments():
 	parser.add_argument('-o', dest='output', 
 		type=argparse.FileType('w'), default="-", 
 		help='Output file name')
+	parser.add_argument('-g', dest='group_by', type=int, default=None, 
+		help='''Perform operation by group. Specify column index 
+		with the group factor [default=%(default)s]''')
 	parser.add_argument('-F','--floor', type=str, default=None, 
 		help='''Rounding interval. Accepted units: years, months, days, 
 		hours, minutes, seconds [default: %(default)s]''')
@@ -40,6 +42,10 @@ def arguments():
 	parser_closest.add_argument('-b', dest='dates_b',
 		type=argparse.FileType('r'), 
 		help='File in dates format (interval)')
+	parser_closest.add_argument('-m', dest='max_dist',
+		help='''Maximum distance allowed between closest 
+		intervals. Format is "<duration> <unit>", eg
+		"10 minutes" [default: %(default)s]''')
 	parser_closest.add_argument('-d', dest='direction',
 		choices=['d','u','b'], default='d', 
 		help='''For each date in A find closest date in B. 
@@ -141,7 +147,7 @@ def format_row(df_row):
 	return "\t".join(map(str, df_row.values.tolist()[0]))
 
 
-def closest_dates(df_b, df_a, tol, direction):
+def closest_dates(df_b, df_a, direction, tol):
 	"""
 	http://code.activestate.com/recipes/335390-closest-elements-in-a-target-array-for-a-given-inp/
 	Find the set of elements in input_array that are closest to
@@ -239,21 +245,26 @@ def closest_dates(df_b, df_a, tol, direction):
 	return out
 
 
-def closest_dates_by_group(df_a, df_b, direction, group_ix=3, max_dist=2.5*3600):
+def closest_dates_by_group(df_a, df_b, direction, group_ix, max_dist=0):
 	''' For each date in A find the closest 
 	date in B by the column specified in group '''
-	print 'start'
-	groups = set(df_a[group_ix].values)
+	try:
+		groups = set(df_a[group_ix].values)
+	except:
+		print "Incorrect column index for group factor"
+		exit() 
 	for group in sorted(groups):
 	# Sort dataframes
 		subdf_a = df_a[df_a[group_ix] == group]
 		subdf_b = df_b[df_b[group_ix] == group]
-		subdf_out = closest_dates(subdf_a, subdf_b, max_dist, direction)
+		subdf_out = closest_dates(subdf_a, subdf_b, 
+			direction=direction, tol=max_dist)
 		try:
 			np.hstack((out, subdf_out))
 		except UnboundLocalError:
 			out = subdf_out
 	return out
+
 
 def format_row_np(row):
 	return "\t".join(map(str, row.tolist()))
@@ -332,6 +343,18 @@ def intersect_dates_by_group(df_a, df_b, group_ix=3):
 			yield date
 
 
+
+def parse_time_interval(t):
+	t = t.strip()
+	count, unit = re.match('(\d+\.?\d*)\ ?([aA-zZ]*)', t).group(1,2)
+	if unit not in ["years", "months", "weeks", 
+		"days", "hours", "minutes", "seconds"]:
+		print "ERROR: Time unit not supported"
+		exit(1)
+	sec = dt.timedelta(**{unit: float(count)}).seconds
+	return sec
+
+
 def intersect(args):
 	''' Intersect dates in b with dates in a '''
 	# Read data with date intervals
@@ -360,9 +383,21 @@ def closest(args):
 	feature in B '''
 	df_a = read_dates_a(args)
 	df_b = read_dates(args.dates_b, args.floor)
-	out = closest_dates_by_group(df_a, df_b, direction=args.direction)
-	print args.output.write
-	np.savetxt(args.output.write, out, fmt='%s', delimiter='\t')
+	max_dist = 0
+	if args.max_dist:
+		max_dist = parse_time_interval(args.max_dist) # seconds
+	if args.group_by:
+		out = closest_dates_by_group( df_a, df_b, 
+			direction=args.direction, 
+			group_ix=args.group_by,
+			max_dist=max_dist,
+			)
+	else:
+		out = closest_dates(df_a, df_b, 
+			direction = args.direction, 
+			tol=max_dist,
+			)
+	np.savetxt(args.output, out, fmt='%s', delimiter='\t')
 	return
 
 
