@@ -236,10 +236,15 @@ def closest_dates(df_b, df_a, direction, tol):
 		if est_tol <= tol:
 			closest_indices[i] += best_off
 
+	curr_tol = np.asarray(curr_tol)
 	accept_indices = np.compress(np.greater(acc_rej_indices, -1), acc_rej_indices)
 	reject_indices = np.compress(np.equal(acc_rej_indices, -1), np.arange(len(acc_rej_indices)))
-	accept_df = np.hstack((df_b[accept_indices], df_a[closest_indices[accept_indices]]))
-	reject_df = np.hstack((df_b[reject_indices], np.full((len(reject_indices), df_a.shape[1]), np.nan)))
+	accept_df =  np.hstack((df_b[accept_indices], 
+		df_a[closest_indices[accept_indices]]))
+	accept_df = np.concatenate( (accept_df, curr_tol[accept_indices, np.newaxis] ), 1)
+	reject_df = np.hstack((df_b[reject_indices], 
+		np.full((len(reject_indices), df_a.shape[1]), np.nan))) 
+	reject_df = np.concatenate( (reject_df, curr_tol[reject_indices, np.newaxis] ), 1)
 	out = np.vstack((accept_df, reject_df))
 #	return (closest_indices, accept_indices, reject_indices)
 	return out
