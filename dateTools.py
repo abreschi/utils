@@ -301,7 +301,7 @@ def merge_dates(df_a, touching=True, group_ix=None, dist=None):
 			a_row = curr_row
 			yield yield_row
 		if dates_overlap(a_row[:2], curr_row[:2], dist=dist):
-			a_row[1] = curr_row[1]
+			a_row[1] = max(curr_row[1], a_row[1])
 			continue
 		yield_row = format_row_np(a_row) + "\n"
 		a_row = curr_row
