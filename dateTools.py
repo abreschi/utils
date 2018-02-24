@@ -30,6 +30,12 @@ def arguments():
 		help='''Pad dates and replace missing values with NaN.
 		Specify the frequency in abbreviated format, e.g. 5min
 		[default: %(default)s]''')
+	parser.add_argument('-I', '--impute-method', default=None, 
+		dest='impute_method', help='''Method for interpolating 
+		missing values. Accepts: linear. By default do not interpolate.''')
+	parser.add_argument('-l', '--impute-limit', default=5, type=int,
+		dest='impute_limit', help='''Maximum number of consecutive 
+		missing values to impute [default=%(default)s]''')
 	subparsers = parser.add_subparsers(metavar="List of utils")
 
 	# create the parser for the 'intersect' command
@@ -82,10 +88,15 @@ def pad_dates(df, pad):
 	end = df[0].max()
 	idx = pandas.date_range( start, end, freq=pad )
 	df.index = pandas.DatetimeIndex(df.index)
-	df = df.reindex(idx, fill_value='NaN')
+	df = df.reindex(idx, fill_value=np.nan)
 	df[0] = df.index
 	df[1] = df.index
 	return df	
+
+
+def impute(df, method, limit):
+	df[2] = df[2].interpolate(method=method, limit=limit)
+	return df
 
 def extend(date, before=None, after=None):
 	if before:
@@ -105,7 +116,7 @@ def extend_dates(df, before, after):
 	return df
 
 
-def read_dates(f, interval=None):
+def read_dates(f, interval=None): 
 	df = pandas.read_csv(f, sep='\t', header=None, parse_dates=[0,1])
 	if interval:
 		df[0] = df[0].dt.round(interval)
@@ -113,9 +124,9 @@ def read_dates(f, interval=None):
 	return df
 
 
-def read_dates_np(f, interval):
-	df = np.genfromtxt(f, delimiter='\t', dtype=None, missing_values="NA")
-	return df
+#def read_dates_np(f, interval):
+#	df = np.genfromtxt(f, delimiter='\t', dtype=None, missing_values="NA")
+#	return df
 
 
 def read_dates_a(args):
@@ -125,6 +136,8 @@ def read_dates_a(args):
 		df_a = extend_dates(df_a, args.before, args.after)
 	if args.pad:
 		df_a = pad_dates(df_a, args.pad)
+	if args.impute_method:
+		df_a = impute(df_a, args.impute_method, args.impute_limit)
 	return df_a
 
 
@@ -303,30 +316,6 @@ def merge_dates(df_a, touching=True, group_ix=None, dist=None):
 	yield format_row_np(a_row) + "\n"
 		
 
-#def intersect_dates_by_group(df_a, df_b, group_ix=3):
-#	''' Intersect dates when a group is specified '''
-#	groups = set(df_a[group_ix].values.tolist())
-#	df_a.sort_values([group_ix,0], 0, inplace=True)
-#	df_b.sort_values([group_ix,0], 0, inplace=True)
-#	return
-#	j = 0
-#	for i in range(df_b.count()[0]):
-#		b_row = df_b.iloc[[i]]
-#		a_row = df_a.iloc[[j]]
-#		if b_row.iloc[0][group_ix] < a_row.iloc[0][group_ix]:
-#			continue
-#		while b_row.iloc[0][group_ix] > a_row.iloc[0][group_ix] and j < df_a.count()[0] - 1:
-#			j += 1
-#			a_row = df_a.iloc[[j]]
-#		if b_row.iloc[0][group_ix] == a_row.iloc[0][group_ix]:
-#			if b_row.iloc[0][1] < a_row.iloc[0][0]:
-#				continue
-#			while b_row.iloc[0][0] > a_row.iloc[0][1] and j < df_a.count()[0] - 1:
-#				j += 1
-#				a_row = df_a.iloc[[j]]
-#			if dates_overlap(list(b_row.iloc[0][[0,1]]), list(a_row.iloc[0][[0,1]])):
-#				yield format_row(a_row) + format_row(b_row) + "\n"
-
 def intersect_dates(df_a, df_b):
 	''' Intersect dates without specifying group '''
 	df_a_nrows = df_a.shape[0]
@@ -378,7 +367,8 @@ def intersect(args):
 def format(args):
 	''' Print dates file after formatting dates '''
 	df_a = read_dates_a(args)
-	df_a.to_csv(args.output, sep='\t', header=False, index=False)
+	df_a.to_csv(args.output, sep='\t', na_rep='NaN',
+		header=False, index=False)
 	return
 
 
