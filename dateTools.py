@@ -20,12 +20,16 @@ def arguments():
 		help='''Perform operation by group. Specify column index 
 		with the group factor [default=%(default)s]''')
 	parser.add_argument('-F','--floor', type=str, default=None, 
-		help='''Rounding interval. Accepted units: years, months, days, 
-		hours, minutes, seconds [default: %(default)s]''')
+		help='''Rounding interval. Abbreviated form, for example 
+		5min, 1h [default: %(default)s]''')
 	parser.add_argument('--before', 
 		help="How much extend the time interval before [default: %(default)s]")
 	parser.add_argument('--after', 
 		help="How much extend the time interval after [default: %(default)s]")
+	parser.add_argument('--pad', default=None, type=str,
+		help='''Pad dates and replace missing values with NaN.
+		Specify the frequency in abbreviated format, e.g. 5min
+		[default: %(default)s]''')
 	subparsers = parser.add_subparsers(metavar="List of utils")
 
 	# create the parser for the 'intersect' command
@@ -70,25 +74,18 @@ def arguments():
 	return parser
 	
 
-def floor_date(date, interval):
-	''' Round date to the closest interval before '''
-	units = ['years', 'months', 'days', 'hours', 
-		'minutes', 'seconds']
-	# Approximate to closest value
-	def round(date, unit, n):
-		n = int(n)
-		return date.__getattribute__(unit) / n * n
-	n, unit = interval.strip().split()
-	# Supported units
-	if unit not in units:
-		print 'ERROR: unit not supported'
-		exit()
-	# remove plural
-	unit = unit.rstrip('s')
-	rounded = round(date, unit, n)
-	date = eval('date.replace(%s = %s)' %(unit, rounded))
-	return date
-	
+
+def pad_dates(df, pad):
+	''' Add missing values for missing data points '''
+	df.set_index(df[0], inplace=True)
+	start = df[0].min()
+	end = df[0].max()
+	idx = pandas.date_range( start, end, freq=pad )
+	df.index = pandas.DatetimeIndex(df.index)
+	df = df.reindex(idx, fill_value='NaN')
+	df[0] = df.index
+	df[1] = df.index
+	return df	
 
 def extend(date, before=None, after=None):
 	if before:
@@ -109,15 +106,10 @@ def extend_dates(df, before, after):
 
 
 def read_dates(f, interval=None):
-	#if interval:
-	#	dateparse = lambda x: floor_date(parse(x), interval)
-	#else:
-	#	dateparse = lambda x: parse(x)	
-	#df = pandas.read_csv(f, sep='\t', header=None, parse_dates=[0,1], date_parser=dateparse)
 	df = pandas.read_csv(f, sep='\t', header=None, parse_dates=[0,1])
 	if interval:
-		df[0] = map(lambda x: floor_date(x, interval), df[0])
-		df[1] = map(lambda x: floor_date(x, interval), df[1])
+		df[0] = df[0].dt.round(interval)
+		df[1] = df[1].dt.round(interval)
 	return df
 
 
@@ -131,6 +123,8 @@ def read_dates_a(args):
 	df_a = read_dates(args.dates_a, args.floor)
 	if args.before or args.after:
 		df_a = extend_dates(df_a, args.before, args.after)
+	if args.pad:
+		df_a = pad_dates(df_a, args.pad)
 	return df_a
 
 
