@@ -20,8 +20,9 @@ def arguments():
 		help='''Perform operation by group. Specify column index 
 		with the group factor [default=%(default)s]''')
 	parser.add_argument('-F','--floor', type=str, default=None, 
-		help='''Rounding interval. Abbreviated form, for example 
-		5min, 1h [default: %(default)s]''')
+		help='''Rounding interval. Check 
+		http://pandas.pydata.org/pandas-docs/stable/timeseries.html#offset-aliases 
+		for a list of available offsets [default: %(default)s]''')
 	parser.add_argument('--before', 
 		help="How much extend the time interval before [default: %(default)s]")
 	parser.add_argument('--after', 
@@ -367,6 +368,10 @@ def intersect(args):
 def format(args):
 	''' Print dates file after formatting dates '''
 	df_a = read_dates_a(args)
+	#print pandas.date_range(df_a[0].min(), df_a[0].max(), freq='37min') + dt.timedelta(hours=2.5)
+#	print df_a.as_matrix()[0,0]
+#	print df_a.loc[df_a.as_matrix()[0,0]: df_a.as_matrix()[0,0]+dt.timedelta(hours=2.5)]
+#	exit()
 	df_a.to_csv(args.output, sep='\t', na_rep='NaN',
 		header=False, index=False)
 	return
