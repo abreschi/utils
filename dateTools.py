@@ -189,7 +189,8 @@ def closest_dates(df_b, df_a, direction, tol):
 	"""
 
 	df_b = df_b.sort_values([0], 0).as_matrix()
-	df_a = df_a.as_matrix()
+	df_a = df_a.sort_values([0], 0).as_matrix()
+	#df_a = df_a.as_matrix()
 
 	# Extract date columns
 	input_array = df_a[:, 0]
@@ -200,7 +201,6 @@ def closest_dates(df_b, df_a, direction, tol):
 	curr_tol = [tol] * len(target_array)
 	# Determine the locations of target_array in input_array
 	closest_indices = np.searchsorted(input_array, target_array)
-
 	est_tol = 0.0
 	for i in xrange(len(target_array)):
 		best_off = 0		  # used to adjust closest_indices[i] for best approximating element in input_array
@@ -284,8 +284,8 @@ def closest_dates_by_group(df_a, df_b, direction,
 		subdf_out = closest_dates(subdf_a, subdf_b, 
 			direction=direction, tol=max_dist)
 		try:
-			np.hstack((out, subdf_out))
-		except:
+			out = np.vstack((out, subdf_out))
+		except NameError:
 		#except UnboundLocalError:
 			out = subdf_out
 	return out
