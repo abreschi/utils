@@ -58,6 +58,10 @@ def arguments():
 		help='''For each date in A find closest date in B. 
 		Restrict to downstream dates only (d), upstream (u)
 		or both (b)	[default=%(default)s]''')
+	parser_closest.add_argument('-m', dest='max_dist',
+		help='''Max distance allowed to call closest intervals. 
+		Format is "<duration> <unit>",
+		eg "10 minutes" [default: %(default)s]''')
 	parser_closest.set_defaults(func=closest)
 	
 	# create the parser for the 'merge' command
@@ -352,7 +356,7 @@ def parse_time_interval(t):
 		"days", "hours", "minutes", "seconds"]:
 		print "ERROR: Time unit not supported"
 		exit(1)
-	sec = dt.timedelta(**{unit: float(count)}).seconds
+	sec = dt.timedelta(**{unit: float(count)}).total_seconds()
 	return sec
 
 
