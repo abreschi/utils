@@ -365,8 +365,15 @@ def intersect(args):
 	# Read data with date intervals
 	df_a = read_dates_a(args)
 	df_b = read_dates(args.dates_b, args.floor)
-	map(args.output.write, intersect_dates_by_group(df_a, df_b))
+	if args.group_by:
+		map(args.output.write, intersect_dates_by_group(df_a, df_b, args.group_by))
+		return
+	df_a = df_a.sort_values([0], 0).as_matrix()
+	df_b = df_b.sort_values([0], 0).as_matrix()
+	print df_a
+	map(args.output.write, intersect_dates(df_a, df_b))
 	return
+	
 
 
 def format(args):
