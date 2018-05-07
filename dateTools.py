@@ -370,7 +370,6 @@ def intersect(args):
 		return
 	df_a = df_a.sort_values([0], 0).as_matrix()
 	df_b = df_b.sort_values([0], 0).as_matrix()
-	print df_a
 	map(args.output.write, intersect_dates(df_a, df_b))
 	return
 	
