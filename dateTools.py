@@ -92,7 +92,6 @@ def pad_dates(df, pad):
 	start = df[0].min()
 	end = df[0].max()
 	idx = pandas.date_range( start=start, end=end, freq=pad )
-        print list(df.index)[:10] 
 	df.index = pandas.DatetimeIndex(df.index)
 	df = df.reindex(idx, fill_value=np.nan)
 	df[0] = df.index
@@ -122,6 +121,20 @@ def extend_dates(df, before, after):
 	return df
 
 
+def smooth_WA(df):
+    ''' Weighted average. Duplicate start and end '''
+    weights = np.array([1,2,4,8,16,24,16,8,4,2,1])
+    weights = weights / float(weights.sum())
+    n = len(weights)
+    col = df.columns.values[2]
+    df = pd.concat([df.iloc[:n], df, df.iloc[-n:]])
+    df[col] = df[col].rolling(n).apply(
+        lambda x: (np.array(x) * weights).sum(),
+        raw=True)
+    df = df.iloc[n:-n]
+    return df 
+
+
 def preprocess_cgm(f):
     # Read dates and floor 5min
     df = read_dates(f, interval="5min")
@@ -129,8 +142,9 @@ def preprocess_cgm(f):
     df = pad_dates(df, "5min")
     # Impute
     df = impute(df, "linear", 5)
-    print df[df.columns.values[2]].rolling(5).sum()
-    return
+    # Smooth
+    df = smooth_WA(df)
+    return df
 
 
 
