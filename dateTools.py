@@ -135,7 +135,9 @@ def preprocess_cgm(f):
 
 
 def read_dates(f, interval=None): 
-	df = pandas.read_csv(f, sep='\t', header=None, parse_dates=[0,1])
+	df = pandas.read_csv(f, sep='\t', 
+                header=None, parse_dates=[0,1])
+        df[2] = pd.to_numeric(df[2], errors="coerce")
 	if interval:
 		df[0] = df[0].dt.floor(interval)
 		df[1] = df[1].dt.floor(interval)
