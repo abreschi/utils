@@ -91,7 +91,8 @@ def pad_dates(df, pad):
 	df.set_index(df[0], inplace=True)
 	start = df[0].min()
 	end = df[0].max()
-	idx = pandas.date_range( start, end, freq=pad )
+	idx = pandas.date_range( start=start, end=end, freq=pad )
+        print list(df.index)[:10] 
 	df.index = pandas.DatetimeIndex(df.index)
 	df = df.reindex(idx, fill_value=np.nan)
 	df[0] = df.index
@@ -121,11 +122,23 @@ def extend_dates(df, before, after):
 	return df
 
 
+def preprocess_cgm(f):
+    # Read dates and floor 5min
+    df = read_dates(f, interval="5min")
+    # Pad dates 5 mins
+    df = pad_dates(df, "5min")
+    # Impute
+    df = impute(df, "linear", 5)
+    print df[df.columns.values[2]].rolling(5).sum()
+    return
+
+
+
 def read_dates(f, interval=None): 
 	df = pandas.read_csv(f, sep='\t', header=None, parse_dates=[0,1])
 	if interval:
-		df[0] = df[0].dt.round(interval)
-		df[1] = df[1].dt.round(interval)
+		df[0] = df[0].dt.floor(interval)
+		df[1] = df[1].dt.floor(interval)
 	return df
 
 
