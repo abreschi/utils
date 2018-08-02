@@ -147,6 +147,32 @@ def preprocess_cgm(f):
     return df
 
 
+def period_to_seconds(period):
+    return pandas.Timedelta(period).total_seconds()
+
+
+def make_windows(values, window_size, stride):
+    ''' Make sliding windows from indeces '''
+    values_stride = values.strides[-1]
+    n = (len(values) - window_size) / stride + 1
+    windows = np.lib.stride_tricks.as_strided(
+        values, shape = (n, window_size), 
+        strides = (values_stride*stride, values_stride)
+    )
+    return windows
+
+
+def make_windows_ts(df, freq, window_size, stride):
+    ''' Make sliding windows from time series'''
+    freq, window_size, stride = map(
+        lambda x: period_to_seconds(x),
+        (freq, window_size, stride)
+    )
+    window_size = int(window_size/freq)
+    stride = int(stride/freq)
+    windows = make_windows(df[2], window_size, stride)
+    return pandas.DataFrame(windows)
+
 
 def read_dates(f, interval=None): 
 	df = pandas.read_csv(f, sep='\t', 
