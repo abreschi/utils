@@ -135,18 +135,6 @@ def smooth_WA(df):
     return df 
 
 
-def preprocess_cgm(f):
-    # Read dates and floor 5min
-    df = read_dates(f, interval="5min")
-    # Pad dates 5 mins
-    df = pad_dates(df, "5min")
-    # Impute
-    df = impute(df, "linear", 5)
-    # Smooth
-    df = smooth_WA(df)
-    return df
-
-
 def period_to_seconds(period):
     return pandas.Timedelta(period).total_seconds()
 
