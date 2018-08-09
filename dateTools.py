@@ -122,16 +122,27 @@ def extend_dates(df, before, after):
 
 
 def smooth_WA(df):
-    ''' Weighted average. Duplicate start and end '''
+    ''' Weighted average. Set start and end stretch of NAs'''
     weights = np.array([1,2,4,8,16,24,16,8,4,2,1])
+    #weights = np.array([1,2,1])
     weights = weights / float(weights.sum())
     n = len(weights)
+    overhang = int(n/2) + 1
     col = df.columns.values[2]
-    df = pandas.concat([df.iloc[:n], df, df.iloc[-n:]])
-    df[col] = df[col].rolling(n).apply(
-        lambda x: (np.array(x) * weights).sum(),
+    a = np.concatenate([
+        np.repeat(df[col].values[0], overhang),
+        df[col].values,
+        np.repeat(df[col].values[-1], overhang),
+    ])
+    print a[:20]
+    print len(df[col].values)
+    print pandas.DataFrame({0:a}).head(20)
+    smoothed = pandas.DataFrame({0:a}).rolling(n, center=True).apply(
+        lambda x: np.sum((np.array(x) * weights)),
         raw=True)
-    df = df.iloc[n:-n]
+    print smoothed.values[:20]
+    print len(smoothed)
+    df[col] = smoothed[0].values[overhang:-overhang]
     return df 
 
 
