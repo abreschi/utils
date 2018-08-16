@@ -10,9 +10,9 @@ echo "USAGE: $0 <file.txt> <file.tsv> [file.txt]"
 exit 1
 fi
 
-rownames=$1
-matrix=$2
-newrownames=$3
+rownames="$1"
+matrix="$2"
+newrownames="$3"
 
 
 #if [[ $newrownames != "" ]]; then
@@ -22,7 +22,7 @@ newrownames=$3
 #fi
 #fi
 
-awk -v file=$matrix -v file2=$newrownames '\
+awk -v file="$matrix" -v file2="$newrownames" '\
 BEGIN{FS="\t"; OFS="\t"; 
 while(getline<file>0){i++; if(i==1){print}else{gene=$1;$1="place_holder";array[gene]=$0}}
 if (file2 != "") {while(getline<file2>0){j++; newRownames[j]=$1}}
@@ -33,4 +33,4 @@ if (file2=="") {print $1, array[$1]} else {print newRownames[NR], array[$1]}
 }END{
 # Check this error
 #if(j!=NR){print "ERROR" | "cat 1>&2"}
-}' $rownames | sed 's/place_holder\t//g'
+}' "$rownames" | sed 's/place_holder\t//g'
