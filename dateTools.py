@@ -5,6 +5,7 @@ import datetime as dt
 import pandas
 import numpy as np
 from dateutil.parser import *
+from collections import Counter
 
 def arguments():
 
@@ -86,16 +87,24 @@ def arguments():
 	
 
 
-def pad_dates(df, pad):
-	''' Add missing values for missing data points '''
+def pad_dates(df, pad, format="dates"):
+	''' Add missing values for missing data points 
+        format can be <dates> or <series>. If format=dates
+        the second column gets the same values as the index. '''
+        format_list = ["dates", "series"]
+        if format not in format_list:
+            print "Format needs to be one of: %s" %(", ".join(format_list))
+            exit()
 	df.set_index(df[0], inplace=True)
-	start = df[0].min()
-	end = df[0].max()
-	idx = pandas.date_range( start=start, end=end, freq=pad )
-	df.index = pandas.DatetimeIndex(df.index)
-	df = df.reindex(idx, fill_value=np.nan)
+	#start = df[0].min()
+	#end = df[0].max()
+	#idx = pandas.date_range( start=start, end=end, freq=pad )
+	#df.index = pandas.DatetimeIndex(df.index)
+	#df = df.reindex(idx, fill_value=np.nan)
+        df = df.resample(pad).asfreq()
 	df[0] = df.index
-	df[1] = df.index
+        if format == "dates":
+	    df[1] = df.index
 	return df	
 
 
