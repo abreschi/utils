@@ -2,10 +2,11 @@
 
 import argparse, ast, re
 import datetime as dt
-import pandas
+import pandas as pd
 import numpy as np
 from dateutil.parser import *
-from collections import Counter
+from collections import OrderedDict
+from scipy.signal import find_peaks
 
 def arguments():
 
@@ -83,6 +84,11 @@ def arguments():
 		help='Format date intervals')
 	parser_format.set_defaults(func=format)
 	
+	# create the parser for the 'peaks' command
+	parser_peaks = subparsers.add_parser('peaks', 
+		help='Find peaks in time series')
+	parser_peaks.set_defaults(func=peaks)
+	
 	return parser
 	
 
@@ -142,15 +148,100 @@ def smooth_WA(df):
         df[col].values,
         np.repeat(df[col].values[-1], overhang),
     ])
-    smoothed = pandas.DataFrame({0:a}).rolling(n, center=True).apply(
+    smoothed = pd.DataFrame({0:a}).rolling(n, center=True).apply(
         lambda x: np.sum((np.array(x) * weights)),
         raw=True)
     df[col] = smoothed[0].values[overhang:-overhang]
     return df 
 
 
+def peaks_to_dates_formats(d):
+    ''' returns peaks as dataframe in dates format '''
+    x, dates, peaks = d['x'], d['dates'], d['peaks']
+    left_bases = d['properties']['left_bases']
+    right_bases = d['properties']['right_bases']
+    # Make peaks DataFrame in dates format
+    peaks_dates = pd.DataFrame(OrderedDict( (
+        ("start", dates[left_bases]),
+        ("end", dates[right_bases]),
+        ("summit_value", x[peaks]),
+        ("summit", dates[peaks]),
+        ("start_value", x[left_bases]),
+        ("end_value", x[right_bases]),
+        #("end_value", properties["width_heights"]),
+    ) ) )
+    return peaks_dates
+
+
+def adjust_peak_bases(peaks, properties):
+    ''' Adjust left and right peak boundaries 
+    to remove overlapping peaks '''
+    left_bases, right_bases = (properties['left_bases'],
+        properties['right_bases'])
+    # Redefine left borders
+    left_bases_dist = np.minimum(
+        peaks[1:] - left_bases[1:], 
+        peaks[1:] - right_bases[:-1]
+    )
+    left_bases_dist[left_bases_dist<0] = (peaks[1:] - 
+        left_bases[1:])[left_bases_dist<0]
+    left_bases[1:] = peaks[1:] - left_bases_dist
+    # Redefine right borders
+    right_bases_dist = np.minimum(
+        left_bases[1:] - peaks[:-1], 
+        right_bases[:-1] - peaks[:-1]
+    )
+    right_bases_dist[right_bases_dist<0] = (peaks[:-1] - 
+        right_bases[:-1])[right_bases_dist<0]
+    right_bases[:-1] = peaks[:-1] + right_bases_dist
+    # Output
+    properties['left_bases'] = left_bases
+    properties['right_bases'] = right_bases
+    return properties
+
+
+def dates_to_peaks(df_dates):
+    ''' Find peaks from dates format '''
+    distance = 6
+    prominence = 2
+    #df_dates = preprocess_cgm(df_dates)
+    x = np.array(df_dates[2])
+    dates = np.array(df_dates[0])
+    peaks, properties = find_peaks(x, 
+        distance=distance, prominence=prominence,
+        width=3, rel_height=1)
+    properties = adjust_peak_bases(peaks, properties)
+    d = {
+        'x': x,
+        'dates': dates,
+        'peaks': peaks,
+        'properties': properties,
+    }
+    return d
+
+
+def height_width_ratio(peaks):
+    ''' Compute ratio between height and width
+    for each peak '''
+    left_bases = peaks['properties']['left_bases']
+    right_bases = peaks['properties']['right_bases']
+    widths = (peaks['dates'][right_bases] -
+        peaks['dates'][left_bases]).astype('float64')/1e9
+    heights = peaks['properties']['prominences']
+    ratio = widths/heights
+    return ratio
+
+
+def area_under_peaks(peaks):
+    left_bases = peaks['properties']['left_bases']
+    right_bases = peaks['properties']['right_bases']
+    areas = [np.trapz(peaks['x'][l:r])
+        for l, r in zip(left_bases, right_bases)]
+    return areas
+
+
 def period_to_seconds(period):
-    return pandas.Timedelta(period).total_seconds()
+    return pd.Timedelta(period).total_seconds()
 
 
 def make_windows(values, window_size, stride):
@@ -173,16 +264,16 @@ def make_windows_ts(df, freq, window_size, stride):
     window_size = int(window_size/freq)
     stride = int(stride/freq)
     windows = make_windows(df[2], window_size, stride)
-    return pandas.DataFrame(windows)
+    return pd.DataFrame(windows)
 
 
 def read_dates(f, interval=None): 
-	df = pandas.read_csv(f, sep='\t', 
+	df = pd.read_csv(f, sep='\t', 
                 header=None, parse_dates=[0,1])
-        df[2] = pandas.to_numeric(df[2], errors="coerce")
+        df[2] = pd.to_numeric(df[2], errors="coerce")
 	if interval:
-		df[0] = df[0].dt.floor(interval)
-		df[1] = df[1].dt.floor(interval)
+		df[0] = df[0].dt.round('20s').dt.round(interval)
+		df[1] = df[1].dt.round('20s').dt.round(interval)
 	return df
 
 
@@ -475,6 +566,19 @@ def closest(args):
 			)
 	np.savetxt(args.output, out, fmt='%s', delimiter='\t')
 	return
+
+
+def peaks(args):
+    ''' Find peaks in time series '''
+    df_a = read_dates_a(args)
+    df_a = smooth_WA(df_a)
+    peaks_d = dates_to_peaks(df_a)
+    out = peaks_to_dates_formats(peaks_d)
+    out.to_csv(args.output, sep='\t', 
+        na_rep='NaN', header=True, index=False)
+    #np.savetxt(args.output, out, 
+    #    fmt='%s', delimiter='\t')
+    return
 
 
 
