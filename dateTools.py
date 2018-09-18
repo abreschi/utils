@@ -136,22 +136,29 @@ def extend_dates(df, before, after):
 	return df
 
 
-def smooth_WA(df):
+def smooth_WA_array(vec):
     ''' Weighted average. Set start and end stretch of NAs'''
     weights = np.array([1,2,4,8,16,24,16,8,4,2,1])
     weights = weights / float(weights.sum())
     n = len(weights)
     overhang = int(n/2) + 1
-    col = df.columns.values[2]
     a = np.concatenate([
-        np.repeat(df[col].values[0], overhang),
-        df[col].values,
-        np.repeat(df[col].values[-1], overhang),
+        np.repeat(vec[0], overhang), vec,
+        np.repeat(vec[-1], overhang),
     ])
     smoothed = pd.DataFrame({0:a}).rolling(n, center=True).apply(
         lambda x: np.sum((np.array(x) * weights)),
         raw=True)
-    df[col] = smoothed[0].values[overhang:-overhang]
+    vec_smoothed = smoothed[0].values[overhang:-overhang]
+    return vec_smoothed
+
+
+def smooth_WA(df):
+    ''' Weighted average. Set start and end stretch of NAs'''
+    col = df.columns.values[2]
+    vec = df[col].values
+    vec_smoothed = smooth_WA_array(vec)
+    df[col] = vec_smoothed
     return df 
 
 
@@ -160,6 +167,8 @@ def peaks_to_dates_formats(d):
     x, dates, peaks = d['x'], d['dates'], d['peaks']
     left_bases = d['properties']['left_bases']
     right_bases = d['properties']['right_bases']
+    auc = area_under_peaks(d)
+    ratio = height_width_ratio(d) 
     # Make peaks DataFrame in dates format
     peaks_dates = pd.DataFrame(OrderedDict( (
         ("start", dates[left_bases]),
@@ -169,6 +178,8 @@ def peaks_to_dates_formats(d):
         ("start_value", x[left_bases]),
         ("end_value", x[right_bases]),
         #("end_value", properties["width_heights"]),
+        ("ratio", ratio),
+        ("auc", auc),
     ) ) )
     return peaks_dates
 
@@ -200,11 +211,37 @@ def adjust_peak_bases(peaks, properties):
     return properties
 
 
+def trim_peaks(d):
+    ''' Trim peaks to remove leading or trailing
+    flat regions '''
+    x, peaks = d['x'], d['peaks']
+    left_bases = d['properties']['left_bases']
+    right_bases = d['properties']['right_bases']
+    #x = smooth_WA(x)
+    for i, (l, r) in enumerate(zip(left_bases, right_bases)):
+        left_dd = np.diff(np.diff(x[l:r]))
+        right_dd = np.diff(np.diff(np.flip(x[l:r])))
+        trim_left = np.argmax(left_dd)
+        trim_right = np.argmax(right_dd)
+        n = r-l
+        #print l, trim_left, peaks[i], r, d['dates'][peaks[i]]
+        if (trim_left +l> l+3 and trim_left +l< peaks[i] - n/4
+                #and left_dd[trim_left] > 2
+            ):
+            left_bases[i] = trim_left +l
+        if (trim_right+l < r-3 and trim_right +l> peaks[i] + n/4
+                #and right_dd[trim_right] > 2
+            ):
+            right_bases[i] = trim_right +l
+    d['properties']['left_bases'] = left_bases
+    d['properties']['right_bases'] = right_bases
+    return d
+    
+
 def dates_to_peaks(df_dates):
     ''' Find peaks from dates format '''
     distance = 6
     prominence = 2
-    #df_dates = preprocess_cgm(df_dates)
     x = np.array(df_dates[2])
     dates = np.array(df_dates[0])
     peaks, properties = find_peaks(x, 
@@ -217,6 +254,7 @@ def dates_to_peaks(df_dates):
         'peaks': peaks,
         'properties': properties,
     }
+    d = trim_peaks(d)
     return d
 
 
@@ -233,9 +271,12 @@ def height_width_ratio(peaks):
 
 
 def area_under_peaks(peaks):
+    ''' Area under glucose curve starting
+    from left peak boundary '''
+    x = peaks['x']
     left_bases = peaks['properties']['left_bases']
     right_bases = peaks['properties']['right_bases']
-    areas = [np.trapz(peaks['x'][l:r])
+    areas = [np.trapz(x[l:r]) - x[l]*(r-l)
         for l, r in zip(left_bases, right_bases)]
     return areas
 
@@ -573,9 +614,18 @@ def peaks(args):
     df_a = read_dates_a(args)
     df_a = smooth_WA(df_a)
     peaks_d = dates_to_peaks(df_a)
-    out = peaks_to_dates_formats(peaks_d)
-    out.to_csv(args.output, sep='\t', 
-        na_rep='NaN', header=True, index=False)
+    peaks_datetime = peaks_d['dates'][peaks_d['peaks']] 
+    #summit =  np.datetime64('2018-08-19 13:00:00')
+    summit =  np.datetime64('2018-08-17 15:10:00')
+    #summit =  np.datetime64('2018-08-19 09:45:00')
+    idx = np.where(peaks_datetime == summit)[0] 
+    l = peaks_d['properties']['left_bases'][idx]
+    r = peaks_d['properties']['right_bases'][idx]
+    print "\n".join(map(str, peaks_d['x'][l[0]:r[0]]))
+    
+    #out = peaks_to_dates_formats(peaks_d)
+    #out.round(2).to_csv(args.output, sep='\t', 
+    #    na_rep='NaN', header=True, index=False)
     #np.savetxt(args.output, out, 
     #    fmt='%s', delimiter='\t')
     return
