@@ -217,24 +217,37 @@ def trim_peaks(d):
     x, peaks = d['x'], d['peaks']
     left_bases = d['properties']['left_bases']
     right_bases = d['properties']['right_bases']
-    #x = smooth_WA(x)
+    # Smooth the peak even if already smoothed
+    x = smooth_WA_array(x)
     for i, (l, r) in enumerate(zip(left_bases, right_bases)):
-        left_dd = np.diff(np.diff(x[l:r]))
-        right_dd = np.diff(np.diff(np.flip(x[l:r])))
-        trim_left = np.argmax(left_dd)
-        trim_right = np.argmax(right_dd)
-        n = r-l
-        #print l, trim_left, peaks[i], r, d['dates'][peaks[i]]
-        if (trim_left +l> l+3 and trim_left +l< peaks[i] - n/4
-                #and left_dd[trim_left] > 2
-            ):
-            left_bases[i] = trim_left +l
-        if (trim_right+l < r-3 and trim_right +l> peaks[i] + n/4
-                #and right_dd[trim_right] > 2
-            ):
-            right_bases[i] = trim_right +l
+        # Get minimum and maximum boundaries
+        min_x, max_x = min(x[l], x[r]), max(x[l], x[r])
+        # Compute area under peak, subtract lower triangle
+        area = ( np.trapz(x[l:r] - min_x) -
+            (max_x-min_x)*(l-r)/2 )
+        # --- Trim left boundary ---
+        # Compute second derivative
+        left_dd = np.diff(np.maximum(np.diff(x[l:r]), 0))
+        # Find second dd maximum
+        trim_left = np.argmax(left_dd) +l
+        # Compute area under putative trimmed part
+        area_left = np.trapz(x[l:trim_left] - x[l])
+        ##print l, trim_left, peaks[i], r, d['dates'][peaks[i]]
+        ##print area, area_left, d['dates'][peaks[i]]
+        # Check conditions for trimming
+        if (trim_left > l+3 and trim_left < peak[i]
+            and area_left < 1/3.0*area):
+            left_bases[i] = trim_left -2 
+        ## --- Trim right boundary ---
+        ##right_dd = np.diff(np.diff(np.flip(x[l:r])))
+        ##trim_right = np.argmax(right_dd) +l
+        ##if (trim_right < r-3 and trim_right > peak
+        ##    ):
+        ##    right_bases[i] = trim_right -2
+    #d['x'] = x
+    # Update peak dictionary
     d['properties']['left_bases'] = left_bases
-    d['properties']['right_bases'] = right_bases
+    ##d['properties']['right_bases'] = right_bases
     return d
     
 
@@ -614,18 +627,17 @@ def peaks(args):
     df_a = read_dates_a(args)
     df_a = smooth_WA(df_a)
     peaks_d = dates_to_peaks(df_a)
-    peaks_datetime = peaks_d['dates'][peaks_d['peaks']] 
-    #summit =  np.datetime64('2018-08-19 13:00:00')
-    summit =  np.datetime64('2018-08-17 15:10:00')
-    #summit =  np.datetime64('2018-08-19 09:45:00')
-    idx = np.where(peaks_datetime == summit)[0] 
-    l = peaks_d['properties']['left_bases'][idx]
-    r = peaks_d['properties']['right_bases'][idx]
-    print "\n".join(map(str, peaks_d['x'][l[0]:r[0]]))
-    
-    #out = peaks_to_dates_formats(peaks_d)
-    #out.round(2).to_csv(args.output, sep='\t', 
-    #    na_rep='NaN', header=True, index=False)
+    #peaks_datetime = peaks_d['dates'][peaks_d['peaks']] 
+    ##summit =  np.datetime64('2018-08-19 13:00:00')
+    #summit =  np.datetime64('2018-08-01 07:40:00')
+    ##summit =  np.datetime64('2018-08-19 09:45:00')
+    #idx = np.where(peaks_datetime == summit)[0] 
+    #l = peaks_d['properties']['left_bases'][idx]
+    #r = peaks_d['properties']['right_bases'][idx]
+    #print "\n".join(map(str, peaks_d['x'][l[0]:r[0]]))
+    out = peaks_to_dates_formats(peaks_d)
+    out.round(2).to_csv(args.output, sep='\t', 
+        na_rep='NaN', header=True, index=False)
     #np.savetxt(args.output, out, 
     #    fmt='%s', delimiter='\t')
     return
