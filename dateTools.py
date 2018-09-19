@@ -235,7 +235,7 @@ def trim_peaks(d):
         ##print l, trim_left, peaks[i], r, d['dates'][peaks[i]]
         ##print area, area_left, d['dates'][peaks[i]]
         # Check conditions for trimming
-        if (trim_left > l+3 and trim_left < peak[i]
+        if (trim_left > l+3 and trim_left < peaks[i]
             and area_left < 1/3.0*area):
             left_bases[i] = trim_left -2 
         ## --- Trim right boundary ---
@@ -289,7 +289,8 @@ def area_under_peaks(peaks):
     x = peaks['x']
     left_bases = peaks['properties']['left_bases']
     right_bases = peaks['properties']['right_bases']
-    areas = [np.trapz(x[l:r]) - x[l]*(r-l)
+    areas = [np.trapz(x[l:r] - min(x[l], x[r])) - 
+            abs(x[r]-x[l])*(r-l)/2
         for l, r in zip(left_bases, right_bases)]
     return areas
 
