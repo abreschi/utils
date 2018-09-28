@@ -115,7 +115,9 @@ def pad_dates(df, pad, format="dates"):
 
 
 def impute(df, method, limit):
-	df[2] = df[2].interpolate(method=method, limit=limit)
+	df[2] = df[2].interpolate(method=method, 
+        limit=limit, limit_direction='both',
+        limit_area='inside')
 	return df
 
 def extend(date, before=None, after=None):
