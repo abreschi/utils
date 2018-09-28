@@ -527,20 +527,21 @@ def merge_dates(df_a, touching=True, group_ix=None, dist=None):
 		
 
 def intersect_dates(df_a, df_b):
-	''' Intersect dates without specifying group '''
-	df_a_nrows = df_a.shape[0]
-	df_b_nrows = df_b.shape[0]
-	j = 0
-	for i in xrange(df_b_nrows):
-		b_row = df_b[i,]
-		a_row = df_a[j,]
-		if b_row[1] < a_row[0]:
-			continue
-		while b_row[0] > a_row[1] and j < df_a_nrows - 1:
-			j += 1
-			a_row = df_a[j,]
-		if dates_overlap(b_row[:2], a_row[:2]):
-			yield format_row_np(a_row) + "\t" + format_row_np(b_row) + "\n"
+    ''' Intersect dates without specifying group '''
+    df_a_nrows = df_a.shape[0]
+    df_b_nrows = df_b.shape[0]
+    j = 0
+    for i in xrange(df_b_nrows):
+        b_row = df_b[i,]
+        a_row = df_a[j,]
+        if b_row[1] < a_row[0]:
+            continue
+        while ( (b_row[0] > a_row[1] and j < df_a_nrows - 1) or
+            dates_overlap(b_row[:2], a_row[:2]) ):
+            j += 1
+            a_row = df_a[j,]
+            if dates_overlap(b_row[:2], a_row[:2]):
+                yield format_row_np(a_row) + "\t" + format_row_np(b_row) + "\n"
 
 
 def intersect_dates_by_group(df_a, df_b, group_ix=3):
