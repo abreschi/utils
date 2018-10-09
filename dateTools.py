@@ -536,8 +536,9 @@ def intersect_dates(df_a, df_b):
         a_row = df_a[j,]
         if b_row[1] < a_row[0]:
             continue
-        while ( (b_row[0] > a_row[1] and j < df_a_nrows - 1) or
-            dates_overlap(b_row[:2], a_row[:2]) ):
+        if dates_overlap(b_row[:2], a_row[:2]):
+            yield format_row_np(a_row) + "\t" + format_row_np(b_row) + "\n"
+        while (b_row[0] > a_row[1] and j < df_a_nrows - 1):
             j += 1
             a_row = df_a[j,]
             if dates_overlap(b_row[:2], a_row[:2]):
@@ -548,8 +549,8 @@ def intersect_dates_by_group(df_a, df_b, group_ix=3):
 	''' Intersect dates when a group is specified '''
 	groups = set(df_a[group_ix].values)
 	for group in sorted(groups):
-		subdf_a = df_a[df_a[group_ix] == group].sort_values([0], 0).as_matrix()
-		subdf_b = df_b[df_b[group_ix] == group].sort_values([0], 0).as_matrix()
+		subdf_a = df_a[df_a[group_ix] == group].sort_values([0], 0).values
+                subdf_b = df_b[df_b[group_ix] == group].sort_values([0], 0).values
 		for date in intersect_dates(subdf_a, subdf_b):
 			yield date
 
