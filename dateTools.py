@@ -94,24 +94,20 @@ def arguments():
 
 
 def pad_dates(df, pad, format="dates"):
-	''' Add missing values for missing data points 
+    ''' Add missing values for missing data points 
         format can be <dates> or <series>. If format=dates
         the second column gets the same values as the index. '''
-        format_list = ["dates", "series"]
-        if format not in format_list:
-            print "Format needs to be one of: %s" %(", ".join(format_list))
-            exit()
-	df.set_index(df[0], inplace=True)
-	#start = df[0].min()
-	#end = df[0].max()
-	#idx = pandas.date_range( start=start, end=end, freq=pad )
-	#df.index = pandas.DatetimeIndex(df.index)
-	#df = df.reindex(idx, fill_value=np.nan)
-        df = df.resample(pad).asfreq()
-	df[0] = df.index
-        if format == "dates":
-	    df[1] = df.index
-	return df	
+    format_list = ["dates", "series"]
+    if format not in format_list:
+        print "Format needs to be one of: %s" %(", ".join(format_list))
+        exit()
+    df.set_index(df[0], inplace=True)
+    df = df[~df.index.duplicated(keep='first')]
+    df = df.resample(pad).asfreq()
+    df[0] = df.index
+    if format == "dates":
+        df[1] = df.index
+    return df    
 
 
 def impute(df, method, limit):
@@ -329,8 +325,8 @@ def read_dates(f, interval=None):
                 header=None, parse_dates=[0,1])
         df[2] = pd.to_numeric(df[2], errors="coerce")
 	if interval:
-		df[0] = df[0].dt.round('20s').dt.round(interval)
-		df[1] = df[1].dt.round('20s').dt.round(interval)
+		df[0] = df[0].dt.round('10s').dt.round(interval)
+		df[1] = df[1].dt.round('10s').dt.round(interval)
 	return df
 
 
@@ -340,15 +336,15 @@ def read_dates(f, interval=None):
 
 
 def read_dates_a(args):
-	# Read data with date intervals
-	df_a = read_dates(args.dates_a, args.floor)
-	if args.before or args.after:
-		df_a = extend_dates(df_a, args.before, args.after)
-	if args.pad:
-		df_a = pad_dates(df_a, args.pad)
-	if args.impute_method:
-		df_a = impute(df_a, args.impute_method, args.impute_limit)
-	return df_a
+    # Read data with date intervals
+    df_a = read_dates(args.dates_a, args.floor)
+    if args.before or args.after:
+        df_a = extend_dates(df_a, args.before, args.after)
+    if args.pad:
+        df_a = pad_dates(df_a, args.pad)
+    if args.impute_method:
+        df_a = impute(df_a, args.impute_method, args.impute_limit)
+    return df_a
 
 
 def dates_overlap(dates1, dates2, touching=True, dist=0):
