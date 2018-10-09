@@ -393,8 +393,8 @@ def closest_dates(df_b, df_a, direction, tol):
 	  reject_indices:  the indices of elements in target_array that do not have a match in input_array within tolerance
 	"""
 
-	df_b = df_b.sort_values([0], 0).as_matrix()
-	df_a = df_a.sort_values([0], 0).as_matrix()
+	df_b = df_b.sort_values([0], 0).values
+	df_a = df_a.sort_values([0], 0).values
 	#df_a = df_a.as_matrix()
 
 	# Extract date columns
@@ -508,7 +508,7 @@ def merge_dates(df_a, touching=True, group_ix=None, dist=None):
 		df_a.sort_values([group_ix,0,1], 0, inplace=True)
 	else:
 		df_a.sort_values([0,1], 0, inplace=True)
-	df_a = df_a.as_matrix()
+	df_a = df_a.values
 	df_a_nrows, df_a_ncols = df_a.shape
 	a_row = df_a[0,]
 	for i in xrange(df_a_nrows):
@@ -575,8 +575,8 @@ def intersect(args):
 	if args.group_by:
 		map(args.output.write, intersect_dates_by_group(df_a, df_b, args.group_by))
 		return
-	df_a = df_a.sort_values([0], 0).as_matrix()
-	df_b = df_b.sort_values([0], 0).as_matrix()
+	df_a = df_a.sort_values([0], 0).values
+	df_b = df_b.sort_values([0], 0).values
 	map(args.output.write, intersect_dates(df_a, df_b))
 	return
 	
