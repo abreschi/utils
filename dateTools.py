@@ -534,7 +534,7 @@ def intersect_dates(df_a, df_b):
             continue
         if dates_overlap(b_row[:2], a_row[:2]):
             yield format_row_np(a_row) + "\t" + format_row_np(b_row) + "\n"
-        while (b_row[0] > a_row[1] and j < df_a_nrows - 1):
+        while (b_row[1] > a_row[1] and j < df_a_nrows - 1):
             j += 1
             a_row = df_a[j,]
             if dates_overlap(b_row[:2], a_row[:2]):
