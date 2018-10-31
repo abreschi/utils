@@ -99,7 +99,7 @@ def pad_dates(df, pad, format="dates"):
         the second column gets the same values as the index. '''
     format_list = ["dates", "series"]
     if format not in format_list:
-        print "Format needs to be one of: %s" %(", ".join(format_list))
+        print( "Format needs to be one of: %s" %(", ".join(format_list)))
         exit()
     df.set_index(df[0], inplace=True)
     df = df[~df.index.duplicated(keep='first')]
@@ -321,13 +321,13 @@ def make_windows_ts(df, freq, window_size, stride):
 
 
 def read_dates(f, interval=None): 
-	df = pd.read_csv(f, sep='\t', 
-                header=None, parse_dates=[0,1])
-        df[2] = pd.to_numeric(df[2], errors="coerce")
-	if interval:
-		df[0] = df[0].dt.round('10s').dt.round(interval)
-		df[1] = df[1].dt.round('10s').dt.round(interval)
-	return df
+    df = pd.read_csv(f, sep='\t', 
+           header=None, parse_dates=[0,1])
+    df[2] = pd.to_numeric(df[2], errors="coerce")
+    if interval:
+        df[0] = df[0].dt.round('10s').dt.round(interval)
+        df[1] = df[1].dt.round('10s').dt.round(interval)
+    return df
 
 
 #def read_dates_np(f, interval):
@@ -474,7 +474,7 @@ def closest_dates_by_group(df_a, df_b, direction,
 	try:
 		groups = set(df_a[group_ix].values)
 	except:
-		print "Incorrect column index for group factor"
+		print( "Incorrect column index for group factor")
 		exit() 
 	for group in sorted(groups):
 	# Sort dataframes
@@ -542,13 +542,13 @@ def intersect_dates(df_a, df_b):
 
 
 def intersect_dates_by_group(df_a, df_b, group_ix=3):
-	''' Intersect dates when a group is specified '''
-	groups = set(df_a[group_ix].values)
-	for group in sorted(groups):
-		subdf_a = df_a[df_a[group_ix] == group].sort_values([0], 0).values
-                subdf_b = df_b[df_b[group_ix] == group].sort_values([0], 0).values
-		for date in intersect_dates(subdf_a, subdf_b):
-			yield date
+    ''' Intersect dates when a group is specified '''
+    groups = set(df_a[group_ix].values)
+    for group in sorted(groups):
+        subdf_a = df_a[df_a[group_ix] == group].sort_values([0], 0).values
+        subdf_b = df_b[df_b[group_ix] == group].sort_values([0], 0).values
+        for date in intersect_dates(subdf_a, subdf_b):
+            yield date
 
 
 
@@ -557,7 +557,7 @@ def parse_time_interval(t):
 	count, unit = re.match('(\d+\.?\d*)\ ?([aA-zZ]*)', t).group(1,2)
 	if unit not in ["years", "months", "weeks", 
 		"days", "hours", "minutes", "seconds"]:
-		print "ERROR: Time unit not supported"
+		print( "ERROR: Time unit not supported")
 		exit(1)
 	sec = dt.timedelta(**{unit: float(count)}).total_seconds()
 	return sec
