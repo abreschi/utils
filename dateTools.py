@@ -23,7 +23,7 @@ def arguments():
 		with the group factor [default=%(default)s]''')
 	parser.add_argument('-c', dest='coerce',
 		default=False, action="store_true",
-		help='''Coerce third column to numeric [default=%(default)]''')
+		help='''Coerce third column to numeric [default=%(default)s]''')
 	parser.add_argument('-F','--floor', type=str, default=None, 
 		help='''Rounding interval. Check 
 		http://pandas.pydata.org/pandas-docs/stable/timeseries.html#offset-aliases 
