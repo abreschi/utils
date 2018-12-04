@@ -21,6 +21,9 @@ def arguments():
 	parser.add_argument('-g', dest='group_by', type=int, default=None, 
 		help='''Perform operation by group. Specify column index 
 		with the group factor [default=%(default)s]''')
+	parser.add_argument('-c', dest='coerce',
+		default=False, action="store_true",
+		help='''Coerce third column to numeric [default=%(default)]''')
 	parser.add_argument('-F','--floor', type=str, default=None, 
 		help='''Rounding interval. Check 
 		http://pandas.pydata.org/pandas-docs/stable/timeseries.html#offset-aliases 
@@ -88,6 +91,12 @@ def arguments():
 	parser_peaks = subparsers.add_parser('peaks', 
 		help='Find peaks in time series')
 	parser_peaks.set_defaults(func=peaks)
+	
+	# create the parser for the 'melt' command
+	parser_melt = subparsers.add_parser('melt', 
+		help='''Melt intervals to single time-point
+		with frequency as in --floor''')
+	parser_melt.set_defaults(func=melt)
 	
 	return parser
 	
@@ -320,10 +329,11 @@ def make_windows_ts(df, freq, window_size, stride):
     return pd.DataFrame(windows)
 
 
-def read_dates(f, interval=None): 
+def read_dates(f, interval=None, coerce=False): 
     df = pd.read_csv(f, sep='\t', 
            header=None, parse_dates=[0,1])
-    df[2] = pd.to_numeric(df[2], errors="coerce")
+    if coerce:
+        df[2] = pd.to_numeric(df[2], errors="coerce")
     if interval:
         df[0] = df[0].dt.round('10s').dt.round(interval)
         df[1] = df[1].dt.round('10s').dt.round(interval)
@@ -337,7 +347,7 @@ def read_dates(f, interval=None):
 
 def read_dates_a(args):
     # Read data with date intervals
-    df_a = read_dates(args.dates_a, args.floor)
+    df_a = read_dates(args.dates_a, args.floor, args.coerce)
     if args.before or args.after:
         df_a = extend_dates(df_a, args.before, args.after)
     if args.pad:
@@ -389,9 +399,10 @@ def closest_dates(df_b, df_a, direction, tol):
 	  reject_indices:  the indices of elements in target_array that do not have a match in input_array within tolerance
 	"""
 
-	df_b = df_b.sort_values([0], 0).values
-	df_a = df_a.sort_values([0], 0).values
-	#df_a = df_a.as_matrix()
+	df_b = df_b.sort_values([df_b.columns.values[0]], 0).values
+	df_a = df_a.sort_values([df_a.columns.values[0]], 0).values
+	#df_b = df_b.sort_values([0], 0).values
+	#df_a = df_a.sort_values([0], 0).values
 
 	# Extract date columns
 	input_array = df_a[:, 0]
@@ -567,7 +578,7 @@ def intersect(args):
 	''' Intersect dates in b with dates in a '''
 	# Read data with date intervals
 	df_a = read_dates_a(args)
-	df_b = read_dates(args.dates_b, args.floor)
+	df_b = read_dates(args.dates_b, args.floor, args.coerce)
 	if args.group_by:
 		map(args.output.write, intersect_dates_by_group(df_a, df_b, args.group_by))
 		return
@@ -604,7 +615,7 @@ def closest(args):
 	''' For each date in A, find the closest 
 	feature in B '''
 	df_a = read_dates_a(args)
-	df_b = read_dates(args.dates_b, args.floor)
+	df_b = read_dates(args.dates_b, args.floor, args.coerce)
 	max_dist = float('inf')
 	if args.max_dist:
 		max_dist = parse_time_interval(args.max_dist) # seconds
@@ -643,6 +654,21 @@ def peaks(args):
     #    fmt='%s', delimiter='\t')
     return
 
+
+def melt(args):
+	''' Melt time intervals into dates with 
+	specific frequency. Carry over all columns '''
+	df_a = read_dates_a(args)
+	cols = df_a.columns.values
+	freq = args.floor
+	out = pd.concat(df_a.apply(lambda x: pd.DataFrame(
+		{0: pd.date_range(start=x[0], 
+		end=x[1] - pd.Timedelta(freq), freq=freq)}
+		).assign(**dict((str(col), x[col]) for col in cols[2:])),
+		axis=1).tolist())
+	out.to_csv(args.output, sep='\t', 
+		na_rep='NaN', header=False, index=False)
+	return
 
 
 if __name__ == '__main__':
