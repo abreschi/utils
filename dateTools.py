@@ -36,6 +36,10 @@ def arguments():
 		help='''Pad dates and replace missing values with NaN.
 		Specify the frequency in abbreviated format, e.g. 5min
 		[default: %(default)s]''')
+#	parser.add_argument('-f', dest="resample_function", 
+#        default=None, type=str,
+#		help='''Apply function after padding. By default no function
+#        is applied.''')
 	parser.add_argument('-I', '--impute-method', default=None, 
 		dest='impute_method', help='''Method for interpolating 
 		missing values. Accepts: linear. By default do not interpolate.''')
@@ -102,7 +106,7 @@ def arguments():
 	
 
 
-def pad_dates(df, pad, format="dates"):
+def pad_dates(df, pad, format="dates", resample_function=None):
     ''' Add missing values for missing data points 
         format can be <dates> or <series>. If format=dates
         the second column gets the same values as the index. '''
@@ -112,7 +116,11 @@ def pad_dates(df, pad, format="dates"):
         exit()
     df.set_index(df[0], inplace=True)
     df = df[~df.index.duplicated(keep='first')]
-    df = df.resample(pad).asfreq()
+    if resample_function is None:
+        df = df.resample(pad).asfreq()
+    else:
+        pass
+        # !!! Have to find a way to aply function !!!
     df[0] = df.index
     if format == "dates":
         df[1] = df.index
@@ -351,7 +359,8 @@ def read_dates_a(args):
     if args.before or args.after:
         df_a = extend_dates(df_a, args.before, args.after)
     if args.pad:
-        df_a = pad_dates(df_a, args.pad)
+        df_a = pad_dates(df_a, args.pad, 
+            resample_function=args.resample_function)
     if args.impute_method:
         df_a = impute(df_a, args.impute_method, args.impute_limit)
     return df_a
