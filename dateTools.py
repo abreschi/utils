@@ -128,10 +128,10 @@ def pad_dates(df, pad, format="dates", resample_function=None):
 
 
 def impute(df, method, limit):
-	df[2] = df[2].interpolate(method=method, 
+    df[2] = df[2].interpolate(method=method, 
         limit=limit, limit_direction='both',
         limit_area='inside')
-	return df
+    return df
 
 def extend(date, before=None, after=None):
 	if before:
@@ -360,7 +360,8 @@ def read_dates_a(args):
         df_a = extend_dates(df_a, args.before, args.after)
     if args.pad:
         df_a = pad_dates(df_a, args.pad, 
-            resample_function=args.resample_function)
+            #resample_function=args.resample_function
+            )
     if args.impute_method:
         df_a = impute(df_a, args.impute_method, args.impute_limit)
     return df_a
@@ -488,28 +489,28 @@ def closest_dates(df_b, df_a, direction, tol):
 
 
 def closest_dates_by_group(df_a, df_b, direction, 
-		group_ix, max_dist=float('inf')):
-	''' For each date in A find the closest 
-	date in B by the column specified in group '''
-	try:
-		groups = set(df_a[group_ix].values)
-	except:
-		print( "Incorrect column index for group factor")
-		exit() 
-	for group in sorted(groups):
-	# Sort dataframes
-		subdf_a = df_a[df_a[group_ix] == group]
-		subdf_b = df_b[df_b[group_ix] == group]
-		if len(subdf_a) == 0 or len(subdf_b) == 0:
-			continue
-		subdf_out = closest_dates(subdf_a, subdf_b, 
-			direction=direction, tol=max_dist)
-		try:
-			out = np.vstack((out, subdf_out))
-		except NameError:
-		#except UnboundLocalError:
-			out = subdf_out
-	return out
+        group_ix, max_dist=float('inf')):
+    ''' For each date in A find the closest 
+    date in B by the column specified in group '''
+    try:
+        groups = set(df_a[group_ix].values)
+    except:
+        print( "Incorrect column index for group factor")
+        exit() 
+    for group in sorted(groups):
+    # Sort dataframes
+        subdf_a = df_a[df_a[group_ix] == group]
+        subdf_b = df_b[df_b[group_ix] == group]
+        if len(subdf_a) == 0 or len(subdf_b) == 0:
+            continue
+        subdf_out = closest_dates(subdf_a, subdf_b, 
+            direction=direction, tol=max_dist)
+        try:
+            out = np.vstack((out, subdf_out))
+        except NameError:
+        #except UnboundLocalError:
+            out = subdf_out
+    return out
 
 
 def format_row_np(row):
@@ -621,26 +622,27 @@ def merge(args):
 
 
 def closest(args):
-	''' For each date in A, find the closest 
-	feature in B '''
-	df_a = read_dates_a(args)
-	df_b = read_dates(args.dates_b, args.floor, args.coerce)
-	max_dist = float('inf')
-	if args.max_dist:
-		max_dist = parse_time_interval(args.max_dist) # seconds
-	if args.group_by:
-		out = closest_dates_by_group( df_a, df_b, 
-			direction=args.direction, 
-			group_ix=args.group_by,
-			max_dist=max_dist,
-			)
-	else:
-		out = closest_dates(df_a, df_b, 
-			direction = args.direction, 
-			tol=max_dist,
-			)
-	np.savetxt(args.output, out, fmt='%s', delimiter='\t')
-	return
+    ''' For each date in A, find the closest 
+    feature in B '''
+    df_a = read_dates_a(args)
+    df_b = read_dates(args.dates_b, args.floor, args.coerce)
+    print(df_b.dtypes)
+    max_dist = float('inf')
+    if args.max_dist:
+        max_dist = parse_time_interval(args.max_dist) # seconds
+    if args.group_by:
+        out = closest_dates_by_group( df_a, df_b, 
+            direction=args.direction, 
+            group_ix=args.group_by,
+            max_dist=max_dist,
+            )
+    else:
+        out = closest_dates(df_a, df_b, 
+            direction = args.direction, 
+            tol=max_dist,
+            )
+    np.savetxt(args.output, out, fmt='%s', delimiter='\t')
+    return
 
 
 def peaks(args):
