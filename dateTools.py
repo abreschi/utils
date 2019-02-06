@@ -338,8 +338,8 @@ def make_windows_ts(df, freq, window_size, stride):
 
 
 def read_dates(f, interval=None, coerce=False): 
-    df = pd.read_csv(f, sep='\t', 
-           header=None, parse_dates=[0,1])
+    df = pd.read_csv(f, sep='\t', header=None, 
+        parse_dates=[0,1], encoding='utf-8')
     if coerce:
         df[2] = pd.to_numeric(df[2], errors="coerce")
     if interval:
@@ -384,109 +384,109 @@ def format_row(df_row):
 
 
 def closest_dates(df_b, df_a, direction, tol):
-	"""
-	http://code.activestate.com/recipes/335390-closest-elements-in-a-target-array-for-a-given-inp/
-	Find the set of elements in input_array that are closest to
-	elements in target_array.  Record the indices of the elements in
-	target_array that are within tolerance, tol, of their closest
-	match. Also record the indices of the elements in target_array
-	that are outside tolerance, tol, of their match.
+    """
+    http://code.activestate.com/recipes/335390-closest-elements-in-a-target-array-for-a-given-inp/
+    Find the set of elements in input_array that are closest to
+    elements in target_array.  Record the indices of the elements in
+    target_array that are within tolerance, tol, of their closest
+    match. Also record the indices of the elements in target_array
+    that are outside tolerance, tol, of their match.
 
-	For example, given an array of observations with irregular
-	observation times along with an array of times of interest, this
-	routine can be used to find those observations that are closest to
-	the times of interest that are within a given time tolerance.
+    For example, given an array of observations with irregular
+    observation times along with an array of times of interest, this
+    routine can be used to find those observations that are closest to
+    the times of interest that are within a given time tolerance.
 
-	NOTE: input_array must be sorted! The array, target_array, does not have to be sorted.
+    NOTE: input_array must be sorted! The array, target_array, does not have to be sorted.
 
-	Inputs:
-	  input_array:  a sorted Float64 numarray
-	  target_array: a Float64 numarray
-	  tol:		  a tolerance
+    Inputs:
+      input_array:  a sorted Float64 numarray
+      target_array: a Float64 numarray
+      tol:          a tolerance
 
-	Returns:
-	  closest_indices:  the array of indices of elements in input_array that are closest to elements in target_array
-	  accept_indices:  the indices of elements in target_array that have a match in input_array within tolerance
-	  reject_indices:  the indices of elements in target_array that do not have a match in input_array within tolerance
-	"""
+    Returns:
+      closest_indices:  the array of indices of elements in input_array that are closest to elements in target_array
+      accept_indices:  the indices of elements in target_array that have a match in input_array within tolerance
+      reject_indices:  the indices of elements in target_array that do not have a match in input_array within tolerance
+    """
 
-	df_b = df_b.sort_values([df_b.columns.values[0]], 0).values
-	df_a = df_a.sort_values([df_a.columns.values[0]], 0).values
-	#df_b = df_b.sort_values([0], 0).values
-	#df_a = df_a.sort_values([0], 0).values
+    df_b = df_b.sort_values([df_b.columns.values[0]], 0).values
+    df_a = df_a.sort_values([df_a.columns.values[0]], 0).values
+    #df_b = df_b.sort_values([0], 0).values
+    #df_a = df_a.sort_values([0], 0).values
 
-	# Extract date columns
-	input_array = df_a[:, 0]
-	target_array = df_b[:, 0]
-	# 
-	input_array_len = len(input_array)
-	acc_rej_indices = [-1] * len(target_array)
-	curr_tol = [tol] * len(target_array)
-	# Determine the locations of target_array in input_array
-	closest_indices = np.searchsorted(input_array, target_array)
-	est_tol = 0.0
-	for i in xrange(len(target_array)):
-		best_off = 0		  # used to adjust closest_indices[i] for best approximating element in input_array
-		closest_index = closest_indices[i]
+    # Extract date columns
+    input_array = df_a[:, 0]
+    target_array = df_b[:, 0]
+    # 
+    input_array_len = len(input_array)
+    acc_rej_indices = [-1] * len(target_array)
+    curr_tol = [tol] * len(target_array)
+    # Determine the locations of target_array in input_array
+    closest_indices = np.searchsorted(input_array, target_array)
+    est_tol = 0.0
+    for i in range(len(target_array)):
+        best_off = 0          # used to adjust closest_indices[i] for best approximating element in input_array
+        closest_index = closest_indices[i]
 
-		if closest_index >= input_array_len:
-			# the value target_array[i] is >= all elements 
-			# in input_array so check whether it is within 
-			# tolerance of the last element
-			closest_indices[i] = input_array_len - 1
-			closest_index = closest_indices[i]
-			est_tol = (target_array[i] - input_array[closest_index]).total_seconds()
-			if est_tol < curr_tol[i] and direction != 'd':
-				curr_tol[i] = est_tol
-				acc_rej_indices[i] = i
-		elif target_array[i] == input_array[closest_index]:
-			# target_array[i] is in input_array
-			est_tol = 0.0
-			curr_tol[i] = 0.0
-			acc_rej_indices[i] = i
-		elif closest_index == 0 and direction != 'u':
-			# target_array[i] is <= all elements in input_array
-			est_tol = (input_array[0] - target_array[i]).total_seconds()
-			if est_tol < curr_tol[i]:
-				curr_tol[i] = est_tol
-				acc_rej_indices[i] = i
-		else:
-			# target_array[i] is between input_array[closest_indices[i]-1] and input_array[closest_indices[i]]
-			# and closest_indices[i] must be > 0
-			top_tol = (input_array[closest_index] - target_array[i]).total_seconds()
-			bot_tol = (target_array[i] - input_array[closest_index-1]).total_seconds()
-#			print target_array[i], input_array[closest_index], input_array[closest_index-1]
-			if direction == 'u':
-				est_tol = bot_tol
-				best_off = -1
-			elif direction == 'd':
-				est_tol = top_tol
-			else: # if both directions are allowed
-				if bot_tol <= top_tol:
-					est_tol = bot_tol
-					best_off = -1		   # this is the only place where best_off != 0
-				else:
-					est_tol = top_tol
+        if closest_index >= input_array_len:
+            # the value target_array[i] is >= all elements 
+            # in input_array so check whether it is within 
+            # tolerance of the last element
+            closest_indices[i] = input_array_len - 1
+            closest_index = closest_indices[i]
+            est_tol = (target_array[i] - input_array[closest_index]).total_seconds()
+            if est_tol < curr_tol[i] and direction != 'd':
+                curr_tol[i] = est_tol
+                acc_rej_indices[i] = i
+        elif target_array[i] == input_array[closest_index]:
+            # target_array[i] is in input_array
+            est_tol = 0.0
+            curr_tol[i] = 0.0
+            acc_rej_indices[i] = i
+        elif closest_index == 0 and direction != 'u':
+            # target_array[i] is <= all elements in input_array
+            est_tol = (input_array[0] - target_array[i]).total_seconds()
+            if est_tol < curr_tol[i]:
+                curr_tol[i] = est_tol
+                acc_rej_indices[i] = i
+        else:
+            # target_array[i] is between input_array[closest_indices[i]-1] and input_array[closest_indices[i]]
+            # and closest_indices[i] must be > 0
+            top_tol = (input_array[closest_index] - target_array[i]).total_seconds()
+            bot_tol = (target_array[i] - input_array[closest_index-1]).total_seconds()
+#            print target_array[i], input_array[closest_index], input_array[closest_index-1]
+            if direction == 'u':
+                est_tol = bot_tol
+                best_off = -1
+            elif direction == 'd':
+                est_tol = top_tol
+            else: # if both directions are allowed
+                if bot_tol <= top_tol:
+                    est_tol = bot_tol
+                    best_off = -1           # this is the only place where best_off != 0
+                else:
+                    est_tol = top_tol
 
-			if est_tol < curr_tol[i]:
-				curr_tol[i] = est_tol
-				acc_rej_indices[i] = i
+            if est_tol < curr_tol[i]:
+                curr_tol[i] = est_tol
+                acc_rej_indices[i] = i
 
-		if est_tol <= tol:
-			closest_indices[i] += best_off
+        if est_tol <= tol:
+            closest_indices[i] += best_off
 
-	curr_tol = np.asarray(curr_tol)
-	accept_indices = np.compress(np.greater(acc_rej_indices, -1), acc_rej_indices)
-	reject_indices = np.compress(np.equal(acc_rej_indices, -1), np.arange(len(acc_rej_indices)))
-	accept_df =  np.hstack((df_b[accept_indices], 
-		df_a[closest_indices[accept_indices]]))
-	accept_df = np.concatenate( (accept_df, curr_tol[accept_indices, np.newaxis] ), 1)
-	reject_df = np.hstack((df_b[reject_indices], 
-		np.full((len(reject_indices), df_a.shape[1]), np.nan))) 
-	reject_df = np.concatenate( (reject_df, curr_tol[reject_indices, np.newaxis] ), 1)
-	out = np.vstack((accept_df, reject_df))
-#	return (closest_indices, accept_indices, reject_indices)
-	return out
+    curr_tol = np.asarray(curr_tol)
+    accept_indices = np.compress(np.greater(acc_rej_indices, -1), acc_rej_indices)
+    reject_indices = np.compress(np.equal(acc_rej_indices, -1), np.arange(len(acc_rej_indices)))
+    accept_df =  np.hstack((df_b[accept_indices], 
+        df_a[closest_indices[accept_indices]]))
+    accept_df = np.concatenate( (accept_df, curr_tol[accept_indices, np.newaxis] ), 1)
+    reject_df = np.hstack((df_b[reject_indices], 
+        np.full((len(reject_indices), df_a.shape[1]), np.nan))) 
+    reject_df = np.concatenate( (reject_df, curr_tol[reject_indices, np.newaxis] ), 1)
+    out = np.vstack((accept_df, reject_df))
+#    return (closest_indices, accept_indices, reject_indices)
+    return out
 
 
 def closest_dates_by_group(df_a, df_b, direction, 
@@ -529,7 +529,7 @@ def merge_dates(df_a, touching=True, group_ix=None, dist=None):
 	df_a = df_a.values
 	df_a_nrows, df_a_ncols = df_a.shape
 	a_row = df_a[0,]
-	for i in xrange(df_a_nrows):
+	for i in range(df_a_nrows):
 		curr_row = df_a[i,]
 		if group_ix and a_row[group_ix] != curr_row[group_ix]:
 			yield_row = format_row_np(a_row) + "\n"
@@ -549,7 +549,7 @@ def intersect_dates(df_a, df_b):
     df_a_nrows = df_a.shape[0]
     df_b_nrows = df_b.shape[0]
     j = 0
-    for i in xrange(df_b_nrows):
+    for i in range(df_b_nrows):
         b_row = df_b[i,]
         a_row = df_a[j,]
         if b_row[1] < a_row[0]:
@@ -627,7 +627,6 @@ def closest(args):
     feature in B '''
     df_a = read_dates_a(args)
     df_b = read_dates(args.dates_b, args.floor, args.coerce)
-    print(df_b.dtypes)
     max_dist = float('inf')
     if args.max_dist:
         max_dist = parse_time_interval(args.max_dist) # seconds
@@ -641,8 +640,9 @@ def closest(args):
         out = closest_dates(df_a, df_b, 
             direction = args.direction, 
             tol=max_dist,
-            )
-    np.savetxt(args.output, out, fmt='%s', delimiter='\t')
+        )
+    np.savetxt(args.output, out, fmt='%s', 
+        delimiter='\t')
     return
 
 
