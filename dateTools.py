@@ -363,7 +363,8 @@ def read_dates_a(args):
             #resample_function=args.resample_function
             )
     if args.impute_method:
-        df_a = impute(df_a, args.impute_method, args.impute_limit)
+        df_a = impute(df_a, args.impute_method, 
+            limit=args.impute_limit)
     return df_a
 
 
