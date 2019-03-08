@@ -517,35 +517,38 @@ def closest_dates_by_group(df_a, df_b, direction,
 def format_row_np(row):
 	return "\t".join(map(str, row.tolist()))
 
+
 def merge_dates(df_a, touching=True, group_ix=None, dist=None):
-	''' Merge date intervals '''
-	# Parse distance if provided
-	dist = parse_time_interval(dist) if dist else 0
-	# Check column group
-	if group_ix:
-		df_a.sort_values([group_ix,0,1], 0, inplace=True)
-	else:
-		df_a.sort_values([0,1], 0, inplace=True)
-	df_a = df_a.values
-	df_a_nrows, df_a_ncols = df_a.shape
-	a_row = df_a[0,]
-	for i in range(df_a_nrows):
-		curr_row = df_a[i,]
-		if group_ix and a_row[group_ix] != curr_row[group_ix]:
-			yield_row = format_row_np(a_row) + "\n"
-			a_row = curr_row
-			yield yield_row
-		if dates_overlap(a_row[:2], curr_row[:2], dist=dist):
-			a_row[1] = max(curr_row[1], a_row[1])
-			continue
-		yield_row = format_row_np(a_row) + "\n"
-		a_row = curr_row
-		yield yield_row
-	yield format_row_np(a_row) + "\n"
+    ''' Merge date intervals '''
+    # Parse distance if provided
+    dist = parse_time_interval(dist) if dist else 0
+    # Check column group
+    if group_ix:
+        df_a.sort_values([group_ix,0,1], 0, inplace=True)
+    else:
+        df_a.sort_values([0,1], 0, inplace=True)
+    df_a = df_a.values
+    df_a_nrows, df_a_ncols = df_a.shape
+    a_row = df_a[0,]
+    for i in range(df_a_nrows):
+        curr_row = df_a[i,]
+        if group_ix and a_row[group_ix] != curr_row[group_ix]:
+            yield_row = format_row_np(a_row) + "\n"
+            a_row = curr_row
+            yield yield_row
+        if dates_overlap(a_row[:2], curr_row[:2], dist=dist):
+            a_row[1] = max(curr_row[1], a_row[1])
+            continue
+        yield_row = format_row_np(a_row) + "\n"
+        a_row = curr_row
+        yield yield_row
+    yield format_row_np(a_row) + "\n"
 		
 
 def intersect_dates(df_a, df_b):
     ''' Intersect dates without specifying group '''
+    df_a = df_a.sort_values([0], 0).values
+    df_b = df_b.sort_values([0], 0).values
     df_a_nrows = df_a.shape[0]
     df_b_nrows = df_b.shape[0]
     j = 0
@@ -593,8 +596,8 @@ def intersect(args):
 	if args.group_by:
 		map(args.output.write, intersect_dates_by_group(df_a, df_b, args.group_by))
 		return
-	df_a = df_a.sort_values([0], 0).values
-	df_b = df_b.sort_values([0], 0).values
+	#df_a = df_a.sort_values([0], 0).values
+	#df_b = df_b.sort_values([0], 0).values
 	map(args.output.write, intersect_dates(df_a, df_b))
 	return
 	
@@ -613,13 +616,13 @@ def format(args):
 
 
 def merge(args):
-	''' Merged overlapping dates '''
-	df_a = read_dates_a(args)
-	map(args.output.write, merge_dates(df_a, 
-		not args.no_touching, group_ix = args.group_by, 
-		dist = args.max_dist)
-	)
-	return
+    ''' Merged overlapping dates '''
+    df_a = read_dates_a(args)
+    for line in merge_dates(df_a, 
+            not args.no_touching, group_ix = args.group_by, 
+            dist = args.max_dist):
+        args.output.write(line)
+    return
 
 
 def closest(args):
