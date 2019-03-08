@@ -570,8 +570,10 @@ def intersect_dates_by_group(df_a, df_b, group_ix=3):
     ''' Intersect dates when a group is specified '''
     groups = set(df_a[group_ix].values)
     for group in sorted(groups):
-        subdf_a = df_a[df_a[group_ix] == group].sort_values([0], 0).values
-        subdf_b = df_b[df_b[group_ix] == group].sort_values([0], 0).values
+        subdf_a = df_a[df_a[group_ix] == group]
+        subdf_b = df_b[df_b[group_ix] == group]
+        #subdf_a = df_a[df_a[group_ix] == group].sort_values([0], 0).values
+        #subdf_b = df_b[df_b[group_ix] == group].sort_values([0], 0).values
         for date in intersect_dates(subdf_a, subdf_b):
             yield date
 
