@@ -594,7 +594,8 @@ def intersect(args):
     df_a = read_dates_a(args)
     df_b = read_dates(args.dates_b, args.floor, args.coerce)
     if args.group_by:
-        map(args.output.write, intersect_dates_by_group(df_a, df_b, args.group_by))
+        for line in intersect_dates_by_group(df_a, df_b, args.group_by):
+            args.output.write(line)
         return
     #df_a = df_a.sort_values([0], 0).values
     #df_b = df_b.sort_values([0], 0).values
