@@ -589,17 +589,18 @@ def parse_time_interval(t):
 
 
 def intersect(args):
-	''' Intersect dates in b with dates in a '''
-	# Read data with date intervals
-	df_a = read_dates_a(args)
-	df_b = read_dates(args.dates_b, args.floor, args.coerce)
-	if args.group_by:
-		map(args.output.write, intersect_dates_by_group(df_a, df_b, args.group_by))
-		return
-	#df_a = df_a.sort_values([0], 0).values
-	#df_b = df_b.sort_values([0], 0).values
-	map(args.output.write, intersect_dates(df_a, df_b))
-	return
+    ''' Intersect dates in b with dates in a '''
+    # Read data with date intervals
+    df_a = read_dates_a(args)
+    df_b = read_dates(args.dates_b, args.floor, args.coerce)
+    if args.group_by:
+        map(args.output.write, intersect_dates_by_group(df_a, df_b, args.group_by))
+        return
+    #df_a = df_a.sort_values([0], 0).values
+    #df_b = df_b.sort_values([0], 0).values
+    for line in intersect_dates(df_a, df_b):
+        args.output.write(line)
+    return
 	
 
 
