@@ -482,8 +482,9 @@ def closest_dates(df_b, df_a, direction, tol):
         df_a[closest_indices[accept_indices]]))
     accept_df = np.concatenate( (accept_df, curr_tol[accept_indices, np.newaxis] ), 1)
     reject_df = np.hstack((df_b[reject_indices], 
-        np.full((len(reject_indices), df_a.shape[1]), np.nan))) 
-    reject_df = np.concatenate( (reject_df, curr_tol[reject_indices, np.newaxis] ), 1)
+        np.full((len(reject_indices), df_a.shape[1]+1), np.nan))) 
+        #np.full((len(reject_indices), df_a.shape[1]), np.nan))) 
+    #reject_df = np.concatenate( (reject_df, curr_tol[reject_indices, np.newaxis] ), 1)
     out = np.vstack((accept_df, reject_df))
 #    return (closest_indices, accept_indices, reject_indices)
     return out
