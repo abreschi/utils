@@ -383,7 +383,7 @@ def format_row(df_row):
 	return "\t".join(map(str, df_row.values.tolist()[0]))
 
 
-def closest_dates(df_b, df_a, direction, tol):
+def closest_dates(df_b, df_a, direction, tol=float('inf')):
     """
     http://code.activestate.com/recipes/335390-closest-elements-in-a-target-array-for-a-given-inp/
     Find the set of elements in input_array that are closest to
@@ -548,8 +548,8 @@ def merge_dates(df_a, touching=True, group_ix=None, dist=None):
 
 def intersect_dates(df_a, df_b):
     ''' Intersect dates without specifying group '''
-    df_a = df_a.sort_values([0], 0).values
-    df_b = df_b.sort_values([0], 0).values
+    df_a = df_a.sort_values(df_a.columns[0], 0).values
+    df_b = df_b.sort_values(df_b.columns[0], 0).values
     df_a_nrows = df_a.shape[0]
     df_b_nrows = df_b.shape[0]
     j = 0
