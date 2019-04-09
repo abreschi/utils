@@ -24,7 +24,7 @@ args = parser.parse_args()
 # @@@ CHECK OPTIONS @@@
 
 if args.file1 == "stdin" and args.file2 == "stdin":
-	print "ERROR: Cannot read both files from stdin!"
+	print("ERROR: Cannot read both files from stdin!")
 	exit()
 
 x_indeces = map(int, args.x.split(","))
@@ -65,18 +65,18 @@ for i,line in enumerate(file2):
 	if args.b_header and args.a_header:
 		if i == 0:
 			h2 = line.strip()
-			print "%s\t%s" %(h2,h1)
+			print( "%s\t%s" %(h2,h1) )
 			continue
 	if args.b_header and not args.a_header:
 		if i == 0:
 			h2 = line.strip()
 			h1 = "\t".join(("V"+str(n+1) for n in range(x_fields)))
-			print "%s\t%s" %(h2,h1)
+			print( "%s\t%s" %(h2,h1) )
 			continue
 	if not args.b_header and args.a_header:
 		if i == 0:
 			h2 = "\t".join(("V"+str(n+1) for n in range(len(line_sp))))
-			print "%s\t%s" %(h2,h1)
+			print( "%s\t%s" %(h2,h1) )
 	if not args.b_header and not args.a_header:
 		if i == 0:
 			h1 = "\t".join(("V"+str(n+1) for n in range(len(line_sp)+1, x_fields)))
@@ -86,9 +86,9 @@ for i,line in enumerate(file2):
 		h2 = "X0\t" + h1
 	k = "_".join(list(line_sp[y_index-1] for y_index in y_indeces))
 	if d.has_key(k):
-		print "%s\t%s" %(line.strip(), d[k])
+		print( "%s\t%s" %(line.strip(), d[k]) )
 	elif args.unmatched:
-		print "%s\t%s" %(line.strip(), ph)
+		print( "%s\t%s" %(line.strip(), ph) )
 
 
 
